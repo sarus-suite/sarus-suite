@@ -1,6 +1,6 @@
 # sarus-suite
 
-This repository packages the moving parts needed for an HPC-style container runtime into one tarball: sarusctl, static Podman, Parallax, FUSE/SquashFS helpers, configs, and launch/check scripts.
+This repository packages the moving parts needed by Sarus-Suite, an HPC-style container runtime into one tarball: sarusctl, static Podman, Parallax, FUSE/SquashFS helpers, configs, and launch/check scripts.
 
 ## What it does
 
