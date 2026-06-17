@@ -1,5 +1,16 @@
 # sarus-suite
 
+This repository packages the moving parts needed for an HPC-style container runtime into one tarball: sarusctl, static Podman, Parallax, FUSE/SquashFS helpers, configs, and launch/check scripts.
+
+## What it does
+
+* Fetches and builds upstream componets for sarus-suite.
+* Provide builder scripts that produce static-built dependency binaries.
+* Assembles everything into a structured tar.gz
+* Provides sarus-suite-shell, which creates private config/state dirs and puts bundled tools on PATH.
+* Configures Podman overlay storage to use a Parallax-aware mount program and a read-only Parallax image store.
+
+
 ## Requirements
 
 * Enable unprivileges user namespaces in the kernel
