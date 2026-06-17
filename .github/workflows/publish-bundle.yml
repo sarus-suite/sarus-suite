@@ -1,0 +1,104 @@
+name: Publish sarus-suite bundle
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }} bundle
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compute release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ github.ref_name }}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tarball=dist/sarus-suite-${version}-${{ matrix.arch }}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Check build tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+          docker version
+          devcontainer --version
+
+      - name: Build bundle
+        shell: bash
+        env:
+          BUNDLE_VERSION: ${{ steps.meta.outputs.version }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euxo pipefail
+          ./scripts/build-bundle.sh
+          test -f "${{ steps.meta.outputs.tarball }}"
+
+      - name: Inspect bundle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tar -tzf "${{ steps.meta.outputs.tarball }}" | head -100
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarus-suite-${{ steps.meta.outputs.version }}-${{ matrix.arch }}
+          path: ${{ steps.meta.outputs.tarball }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Compute release tag
+        id: meta
+        shell: bash
+        run: echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download bundles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sarus-suite-${{ steps.meta.outputs.tag }}-*
+          merge-multiple: true
+          path: dist
+
+      - name: Create or update release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.meta.outputs.tag }}
+          name: Release ${{ steps.meta.outputs.tag }}
+          artifacts: dist/*.tar.gz
+          allowUpdates: true
+          replacesArtifacts: true
+          draft: false
+          prerelease: false
