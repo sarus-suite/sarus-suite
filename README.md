@@ -11,10 +11,35 @@ This repository packages the moving parts needed by Sarus-Suite, an HPC-style co
 * Configures Podman overlay storage to use a Parallax-aware mount program and a read-only Parallax image store.
 
 
-## Requirements
+## Build bundle
 
-* Enable unprivileges user namespaces in the kernel
-* Apparmor needs to be configured to allow user namespaces
+Run the full bundle build with:
+
+```sh
+./scripts/build-bundle.sh
+```
+
+Direct requirements:
+
+* `git`
+* `tar`
+* `curl` or `wget`
+* `devcontainer` CLI with a working Docker or Podman backend
+
+The script fetches Parallax and `sarusctl`, downloads static Podman artifacts,
+builds the helper binaries, assembles the runtime tree under `dist/`, verifies
+it, and writes a `.tar.gz` bundle.
+
+## Target runtime requirements
+
+The generated bundle expects a Linux target host with:
+
+* Unprivileged user namespaces enabled in the kernel
+* AppArmor configured to allow user namespaces, where applicable
+* FUSE support available
+* Rootless container prerequisites configured, including subordinate UID/GID
+  ranges in `/etc/subuid` and `/etc/subgid`
+* `uidmap`/`newuidmap`/`newgidmap` support available on the target host
 
 ## Temporary notes
 
