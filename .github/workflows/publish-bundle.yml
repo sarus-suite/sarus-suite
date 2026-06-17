@@ -57,7 +57,7 @@ jobs:
           TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euxo pipefail
-          ./scripts/build-bundle.sh
+          env USER="$(id -un)" UID="$(id -u)" GID="$(id -g)" ./scripts/build-bundle.sh
           test -f "${{ steps.meta.outputs.tarball }}"
 
       - name: Inspect bundle
