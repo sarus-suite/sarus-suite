@@ -57,6 +57,7 @@ jobs:
           TARGET_ARCH: ${{ matrix.arch }}
         run: |
           set -euxo pipefail
+          mkdir -p .cache .work dist
           env USER="$(id -un)" UID="$(id -u)" GID="$(id -g)" ./scripts/build-bundle.sh
           test -f "${{ steps.meta.outputs.tarball }}"
 
