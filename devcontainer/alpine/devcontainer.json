@@ -1,0 +1,17 @@
+{
+  "name": "Sarus Suite Alpine",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "GO_VERSION": "1.24.0"
+    }
+  },
+  "remoteEnv": {
+    "CGO_ENABLED": "1",
+    "GOOS": "linux",
+    "GOFLAGS": "-buildvcs=false"
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "postCreateCommand": "sh ./devcontainer/alpine/post-create.sh"
+}

@@ -1,0 +1,14 @@
+[containers]
+ipcns = "host"
+netns = "host"
+pidns = "host"
+utsns = "host"
+cgroupns = "host"
+cgroups = "no-conmon"
+
+tz = "local"
+
+mounts = ["type=bind,src=/tmp,dst=/tmp"]
+
+[engine]
+runtime = "crun"

@@ -1,0 +1,6 @@
+.cache/
+.work/
+.ci-cache/
+dist/
+tests/vagrant/**/.cache/
+tests/vagrant/**/.vagrant/
