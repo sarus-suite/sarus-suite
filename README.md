@@ -11,6 +11,34 @@ This repository packages the moving parts needed by Sarus-Suite, an HPC-style co
 * Configures Podman overlay storage to use a Parallax-aware mount program and a read-only Parallax image store.
 
 
+## Try the released bundle locally
+
+The release tarball is the fastest way to try the Sarus Suite runtime on a Linux machine. It includes Podman, Sarus tooling, Parallax, FUSE/SquashFS
+helpers, default configs, examples, and check scripts in one portable directory.
+
+Pick the artifact for your host architecture:
+
+```sh
+VERSION=vX.Y.Z
+ARCH=amd64   # or arm64
+
+curl -LO "https://github.com/sarus-suite/sarus-suite/releases/download/${VERSION}/sarus-suite-${VERSION}-${ARCH}.tar.gz"
+tar -xzf "sarus-suite-${VERSION}-${ARCH}.tar.gz"
+
+```
+
+Enter the bundled environment and inspect the bundled EDF examples:
+
+```sh
+./sarus-suite/bin/sarus-suite-shell
+
+cat "./sarus-suite/examples/ubuntu.toml"
+cat "./sarus-suite/examples/debian.toml"
+
+sarusctl run ./sarus-suite/examples/ubuntu.toml cat /etc/os-release
+sarusctl run ./sarus-suite/examples/debian.toml cat /etc/os-release
+```
+
 ## Build bundle
 
 Run the full bundle build with:
