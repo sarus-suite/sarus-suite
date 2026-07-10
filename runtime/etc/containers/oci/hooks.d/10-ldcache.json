@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "hook": {
+    "path": "@@SARUS_SUITE_HOOK_BIN@@/ldcache_hook",
+    "env": [
+      "LDCONFIG_PATH=/sbin/ldconfig"
+    ]
+  },
+  "when": {
+    "always": false,
+    "annotations": {
+      "ldcache.enable": "^true$"
+    }
+  },
+  "stages": [
+    "prestart"
+  ]
+}

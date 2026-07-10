@@ -24,6 +24,18 @@ verify_static_elf() {
 
 verify_static_elf "${RUNTIME_BIN_DIR}/podman"
 verify_static_elf "${RUNTIME_BIN_DIR}/sarusctl"
+verify_static_elf "${RUNTIME_BIN_DIR}/ldcache_hook"
+verify_static_elf "${RUNTIME_BIN_DIR}/mps_hook"
+verify_static_elf "${RUNTIME_BIN_DIR}/pce_hook"
+verify_static_elf "${RUNTIME_BIN_DIR}/pc_injection_hook"
+verify_static_elf "${RUNTIME_BIN_DIR}/mkhomedir"
+verify_static_elf "${RUNTIME_BIN_DIR}/sethomevar"
+verify_static_elf "${RUNTIME_HOOK_BIN_DIR}/ldcache_hook"
+verify_static_elf "${RUNTIME_HOOK_BIN_DIR}/mps_hook"
+verify_static_elf "${RUNTIME_HOOK_BIN_DIR}/pce_hook"
+verify_static_elf "${RUNTIME_HOOK_BIN_DIR}/pc_injection_hook"
+verify_static_elf "${RUNTIME_HOOK_BIN_DIR}/mkhomedir"
+verify_static_elf "${RUNTIME_HOOK_BIN_DIR}/sethomevar"
 verify_static_elf "${RUNTIME_BIN_DIR}/mksquashfs"
 verify_static_elf "${RUNTIME_BIN_DIR}/rsync"
 verify_static_elf "${RUNTIME_BIN_DIR}/inotifywait"
@@ -47,10 +59,18 @@ fi
 [ -x "${RUNTIME_BIN_DIR}/parallax-mount-program" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-check" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-shell" ]
+[ -d "${RUNTIME_HOOK_BIN_DIR}" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/registries.conf" ]
 [ -f "${RUNTIME_CONTAINERS_MODULES_DIR}/hpc" ]
+[ -d "${RUNTIME_CONTAINERS_HOOKS_DIR}" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/10-ldcache.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/20-mps.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/30-pce.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/40-pc-injection.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/50-mkhomedir.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/60-sethomevar.json" ]
 [ -f "${RUNTIME_PARALLAX_ETC_DIR}/parallax-mount.conf" ]
 [ -f "${RUNTIME_SARUS_SUITE_ETC_DIR}/90-sarusctl.conf" ]
 [ -f "${BUNDLE_ROOT}/examples/ubuntu.toml" ]

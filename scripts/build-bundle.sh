@@ -9,6 +9,25 @@ log() {
   printf '[build-bundle] %s\n' "$*"
 }
 
+require_build_environment() {
+  if command -v devcontainer >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ -f /etc/alpine-release ]; then
+    return 0
+  fi
+
+  cat >&2 <<'EOF'
+error: bundle build requires either:
+  - devcontainer CLI with a working Docker or Podman backend, or
+  - an Alpine build environment
+
+This is required by the parallax, helper-binary, and default source-component build steps.
+EOF
+  exit 1
+}
+
 tar_supports_flag() {
   local flag="$1"
   local tmp_dir
@@ -27,6 +46,8 @@ tar_supports_flag() {
   return 1
 }
 
+require_build_environment
+
 log "running fetch-components.sh"
 "${ROOT_DIR}/scripts/fetch-components.sh"
 log "running build-podman.sh"
@@ -35,6 +56,8 @@ log "running build-parallax.sh"
 "${ROOT_DIR}/scripts/build-parallax.sh"
 log "running build-sarusctl.sh"
 "${ROOT_DIR}/scripts/build-sarusctl.sh"
+log "running build-performance-extensions.sh"
+"${ROOT_DIR}/scripts/build-performance-extensions.sh"
 log "running build-helpers.sh"
 "${ROOT_DIR}/scripts/build-helpers.sh"
 log "running assemble-bundle.sh"

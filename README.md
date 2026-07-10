@@ -53,10 +53,11 @@ Direct requirements:
 * `tar`
 * `curl` or `wget`
 * `devcontainer` CLI with a working Docker or Podman backend
+  or an Alpine build environment with the needed toolchains available
 
-The script fetches Parallax and `sarusctl`, downloads static Podman artifacts,
-builds the helper binaries, assembles the runtime tree under `dist/`, verifies
-it, and writes a `.tar.gz` bundle.
+The script fetches Parallax, `sarusctl`, and `performance-extensions`,
+downloads static Podman artifacts, builds the helper binaries, assembles the
+runtime tree under `dist/`, verifies it, and writes a `.tar.gz` bundle.
 
 ## Target runtime requirements
 

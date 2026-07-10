@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "hook": {
+    "path": "@@SARUS_SUITE_HOOK_BIN@@/pc_injection_hook"
+  },
+  "when": {
+    "always": false,
+    "annotations": {
+      "com.hook.test.enabled": "^true$"
+    }
+  },
+  "stages": [
+    "precreate"
+  ]
+}

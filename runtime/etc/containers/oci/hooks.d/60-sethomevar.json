@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "hook": {
+    "path": "@@SARUS_SUITE_HOOK_BIN@@/sethomevar"
+  },
+  "when": {
+    "always": false
+  },
+  "stages": [
+    "precreate"
+  ]
+}
