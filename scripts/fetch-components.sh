@@ -31,3 +31,6 @@ printf '%s\n' "Fetched parallax at $(git -C "${PARALLAX_SRC_DIR}" rev-parse --sh
 
 fetch_repo "${SARUSCTL_REPO}" "${SARUSCTL_REF}" "${SARUSCTL_SRC_DIR}"
 printf '%s\n' "Fetched cluster-tooling at $(git -C "${SARUSCTL_SRC_DIR}" rev-parse --short HEAD)"
+
+fetch_repo "${PERFEXT_REPO}" "${PERFEXT_REF}" "${PERFEXT_SRC_DIR}"
+printf '%s\n' "Fetched performance-extensions at $(git -C "${PERFEXT_SRC_DIR}" rev-parse --short HEAD)"

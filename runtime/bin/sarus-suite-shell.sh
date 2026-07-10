@@ -34,6 +34,7 @@ render_template() {
 
   sed \
     -e "s|@@SARUS_SUITE_BIN@@|$(escape_sed_replacement "${SARUS_SUITE_BIN}")|g" \
+    -e "s|@@SARUS_SUITE_HOOK_BIN@@|$(escape_sed_replacement "${SARUS_SUITE_HOOK_BIN}")|g" \
     -e "s|@@SARUS_SUITE_STATE@@|$(escape_sed_replacement "${SARUS_SUITE_STATE}")|g" \
     -e "s|@@SARUS_SUITE_RUNTIME@@|$(escape_sed_replacement "${SARUS_SUITE_RUNTIME}")|g" \
     -e "s|@@SARUS_SUITE_CONFIG@@|$(escape_sed_replacement "${SARUS_SUITE_CONFIG_HOME}")|g" \
@@ -49,6 +50,21 @@ copy_if_present() {
 
   if [ -f "$src" ]; then
     install -Dm0644 "$src" "$dest"
+  fi
+}
+
+render_dir_templates_if_present() {
+  local src="$1"
+  local dest="$2"
+  local entry
+  local name
+
+  if [ -d "$src" ]; then
+    for entry in "$src"/*; do
+      [ -f "$entry" ] || continue
+      name="$(basename "$entry")"
+      render_template "$entry" "$dest/$name"
+    done
   fi
 }
 
@@ -104,6 +120,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+require_cmd basename
 require_cmd bash
 require_cmd install
 require_cmd sed
@@ -111,7 +128,9 @@ require_cmd sed
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SARUS_SUITE_ROOT="${BUNDLE_ROOT_OVERRIDE:-$(cd "${SCRIPT_DIR}/.." && pwd -P)}"
 SARUS_SUITE_BIN="${SARUS_SUITE_ROOT}/bin"
+SARUS_SUITE_HOOK_BIN="${SARUS_SUITE_ROOT}/libexec/oci/hooks"
 SARUS_SUITE_ETC="${SARUS_SUITE_ROOT}/etc"
+BUNDLE_CONTAINERS_HOOKS_DIR="${SARUS_SUITE_ETC}/containers/oci/hooks.d"
 
 [ -d "${SARUS_SUITE_BIN}" ] || die "bundle bin directory not found: ${SARUS_SUITE_BIN}"
 [ -d "${SARUS_SUITE_ETC}/containers" ] || die "bundle containers config directory not found"
@@ -139,6 +158,7 @@ SARUS_SUITE_OVERRIDE_BIN="${SARUS_SUITE_OVERRIDE_BIN:-}"
 
 CONTAINERS_CONFIG_DIR="${SARUS_SUITE_CONFIG_HOME}/containers"
 CONTAINERS_MODULES_DIR="${CONTAINERS_CONFIG_DIR}/containers.conf.modules"
+CONTAINERS_HOOKS_DIR="${CONTAINERS_CONFIG_DIR}/oci/hooks.d"
 PARALLAX_CONFIG_DIR="${SARUS_SUITE_CONFIG_HOME}/parallax"
 SARUSCTL_PRIVATE_CONFIG_DIR="${SARUS_SUITE_CONFIG_HOME}/sarus-suite"
 LEGACY_CONTAINERS_CONFIG_DIR="${HOME}/.config/containers"
@@ -146,7 +166,7 @@ LEGACY_CONTAINERS_MODULES_DIR="${LEGACY_CONTAINERS_CONFIG_DIR}/containers.conf.m
 LEGACY_SARUSCTL_CONFIG_DIR="${HOME}/.config/sarus-suite"
 RCFILE_PATH="${SARUS_SUITE_RUNTIME}/bashrc"
 
-install -d -m 0700 "${SARUS_SUITE_STATE}" "${SARUS_SUITE_CONFIG_HOME}" "${CONTAINERS_CONFIG_DIR}" "${CONTAINERS_MODULES_DIR}" "${PARALLAX_CONFIG_DIR}" "${SARUSCTL_PRIVATE_CONFIG_DIR}"
+install -d -m 0700 "${SARUS_SUITE_STATE}" "${SARUS_SUITE_CONFIG_HOME}" "${CONTAINERS_CONFIG_DIR}" "${CONTAINERS_MODULES_DIR}" "${CONTAINERS_HOOKS_DIR}" "${PARALLAX_CONFIG_DIR}" "${SARUSCTL_PRIVATE_CONFIG_DIR}"
 install -d -m 0700 "${SARUS_SUITE_RUNTIME}" "${SARUS_SUITE_TMPDIR}" "${SARUS_SUITE_PODMAN_RUNROOT}"
 install -d -m 0700 "$(dirname "${SARUS_SUITE_PODMAN_ROOT}")" "${SARUS_SUITE_PODMAN_ROOT}" "${SARUS_SUITE_PARALLAX_STORE}" "${SARUS_SUITE_STATE}/logs"
 install -d -m 0700 "${LEGACY_CONTAINERS_CONFIG_DIR}" "${LEGACY_CONTAINERS_MODULES_DIR}" "${LEGACY_SARUSCTL_CONFIG_DIR}"
@@ -164,6 +184,7 @@ copy_if_present "${SARUS_SUITE_ETC}/containers/registries.conf" "${CONTAINERS_CO
 copy_if_present "${SARUS_SUITE_ETC}/containers/policy.json" "${CONTAINERS_CONFIG_DIR}/policy.json"
 copy_if_present "${SARUS_SUITE_ETC}/containers/seccomp.json" "${CONTAINERS_CONFIG_DIR}/seccomp.json"
 copy_if_present "${SARUS_SUITE_ETC}/containers/containers.conf.modules/hpc" "${CONTAINERS_MODULES_DIR}/hpc"
+render_dir_templates_if_present "${BUNDLE_CONTAINERS_HOOKS_DIR}" "${CONTAINERS_HOOKS_DIR}"
 
 # Some Podman code paths still consult ~/.config/containers directly for policy.json.
 copy_if_present "${CONTAINERS_CONFIG_DIR}/registries.conf" "${LEGACY_CONTAINERS_CONFIG_DIR}/registries.conf"
@@ -185,6 +206,7 @@ fi
 
 export SARUS_SUITE_ROOT
 export SARUS_SUITE_BIN
+export SARUS_SUITE_HOOK_BIN
 export SARUS_SUITE_ETC
 export SARUS_SUITE_STATE
 export SARUS_SUITE_RUNTIME
