@@ -65,8 +65,16 @@ install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/containers.conf" "${RUNTIME_
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/storage.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf"
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/registries.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/registries.conf"
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/containers.conf.modules/hpc" "${RUNTIME_CONTAINERS_MODULES_DIR}/hpc"
+if [ -d "${ROOT_DIR}/runtime/etc/cdi" ]; then
+  mkdir -p "${RUNTIME_CDI_ETC_DIR}"
+  cp -R "${ROOT_DIR}/runtime/etc/cdi/." "${RUNTIME_CDI_ETC_DIR}/"
+fi
 if [ -d "${ROOT_DIR}/runtime/etc/containers/oci/hooks.d" ]; then
   install -m0644 "${ROOT_DIR}"/runtime/etc/containers/oci/hooks.d/* "${RUNTIME_CONTAINERS_HOOKS_DIR}/"
+fi
+if [ -d "${ROOT_DIR}/runtime/etc/containers/registries.d" ]; then
+  mkdir -p "${RUNTIME_CONTAINERS_REGISTRIES_D_DIR}"
+  cp -R "${ROOT_DIR}/runtime/etc/containers/registries.d/." "${RUNTIME_CONTAINERS_REGISTRIES_D_DIR}/"
 fi
 install -Dm0644 "${ROOT_DIR}/runtime/etc/parallax/parallax-mount.conf" "${RUNTIME_PARALLAX_ETC_DIR}/parallax-mount.conf"
 install -Dm0644 "${ROOT_DIR}/runtime/etc/sarus-suite/90-sarusctl.conf" "${RUNTIME_SARUS_SUITE_ETC_DIR}/90-sarusctl.conf"
