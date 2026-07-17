@@ -18,6 +18,7 @@ OUT="${INOTIFYWAIT_BIN}" INOTIFY_TOOLS_VERSION="${INOTIFY_TOOLS_VERSION}" sh ./d
 OUT="${SQUASHFUSE_LL_BIN}" SQUASHFUSE_VERSION="${SQUASHFUSE_VERSION}" sh ./devcontainer/scripts/build-squashfuse-ll-static.sh
 OUT="${FUSE_OVERLAYFS_BIN}" FUSE_OVERLAYFS_VERSION="${FUSE_OVERLAYFS_VERSION}" sh ./devcontainer/scripts/build-fuse-overlayfs-static.sh
 OUT="${FUSERMOUNT3_BIN}" LIBFUSE_VERSION="${LIBFUSE_VERSION}" sh ./devcontainer/scripts/build-fusermount3-static.sh
+OUT="${BWRAP_BIN}" BUBBLEWRAP_VERSION="${BUBBLEWRAP_VERSION}" BUBBLEWRAP_REPO="${BUBBLEWRAP_REPO}" sh ./devcontainer/scripts/build-bwrap-static.sh
 BUILD
 )
 

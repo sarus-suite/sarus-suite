@@ -114,6 +114,7 @@ main() {
   check_cmd_path squashfuse_ll
   check_cmd_path fuse-overlayfs
   check_cmd_path fusermount3
+  check_cmd_path bwrap
   check_cmd_path inotifywait
   check_cmd_path rsync
 
