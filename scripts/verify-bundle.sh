@@ -42,6 +42,7 @@ verify_static_elf "${RUNTIME_BIN_DIR}/inotifywait"
 verify_static_elf "${RUNTIME_BIN_DIR}/squashfuse_ll"
 verify_static_elf "${RUNTIME_BIN_DIR}/fuse-overlayfs"
 verify_static_elf "${RUNTIME_BIN_DIR}/fusermount3"
+verify_static_elf "${RUNTIME_BIN_DIR}/bwrap"
 verify_static_elf "${RUNTIME_BIN_DIR}/pasta"
 verify_static_elf "${RUNTIME_BIN_DIR}/crun"
 

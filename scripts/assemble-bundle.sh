@@ -59,6 +59,7 @@ install_bin "${INOTIFYWAIT_BIN}" inotifywait
 install_bin "${SQUASHFUSE_LL_BIN}" squashfuse_ll
 install_bin "${FUSE_OVERLAYFS_BIN}" fuse-overlayfs
 install_bin "${FUSERMOUNT3_BIN}" fusermount3 4755
+install_bin "${BWRAP_BIN}" bwrap
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-shell.sh" sarus-suite-shell
 
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/containers.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
@@ -131,4 +132,5 @@ inotify_tools_version=${INOTIFY_TOOLS_VERSION}
 squashfuse_version=${SQUASHFUSE_VERSION}
 fuse_overlayfs_version=${FUSE_OVERLAYFS_VERSION}
 libfuse_version=${LIBFUSE_VERSION}
+bubblewrap_version=${BUBBLEWRAP_VERSION}
 MANIFEST
