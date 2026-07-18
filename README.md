@@ -79,13 +79,6 @@ scripts this bundle expects.
 Once that branch is merged into `main`, switch the Parallax defaults in
 `components.sh` back to `main` and remove this note.
 
-Note: this repo also currently defaults to the `sarusctl-home-config`
-branch from `sarus-suite/cluster-tooling` because it carries the Alpine
-devcontainer and static `sarusctl` build flow this bundle expects.
-
-Once that branch is merged into `main`, switch the `cluster-tooling` defaults
-in `components.sh` back to `main` and remove this note.
-
 TODO: revisit the scope of `sarus-suite-check` so it can validate bundle
 structure and config consistency more generically, instead of relying so much
 on hard-coded file names and specific optional layouts.
