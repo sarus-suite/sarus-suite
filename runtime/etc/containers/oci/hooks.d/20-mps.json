@@ -4,7 +4,6 @@
     "path": "@@SARUS_SUITE_HOOK_BIN@@/mps_hook"
   },
   "when": {
-    "always": false,
     "annotations": {
       "mps.enable": "^true$"
     }

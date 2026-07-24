@@ -47,6 +47,72 @@ resolve_target_triple() {
   esac
 }
 
+docker_cli_is_podman() {
+  local runtime="${SARUSCTL_DEVCONTAINER_RUNTIME:-auto}"
+  local docker_path
+  local docker_realpath
+  local output
+
+  case "${runtime}" in
+    podman)
+      return 0
+      ;;
+    docker)
+      return 1
+      ;;
+    auto)
+      ;;
+    *)
+      die "unsupported SARUSCTL_DEVCONTAINER_RUNTIME: ${runtime}"
+      ;;
+  esac
+
+  docker_path="$(command -v docker 2>/dev/null || true)"
+  if [ -n "${docker_path}" ]; then
+    docker_realpath="$(realpath "${docker_path}" 2>/dev/null || printf '%s\n' "${docker_path}")"
+    case "${docker_path}:${docker_realpath}" in
+      *podman*)
+        return 0
+        ;;
+    esac
+  fi
+
+  output="$(
+    {
+      docker --version
+      docker version
+      docker info
+    } 2>&1 || true
+  )"
+  printf '%s\n' "${output}" | grep -Eiq 'podman|Emulate Docker CLI using podman'
+}
+
+prepare_devcontainer_config() {
+  local config_rel="$1"
+  local config_path="${SARUSCTL_SRC_DIR}/${config_rel}"
+  local config_dir
+  local generated_dir
+  local generated_path
+
+  config_dir="$(dirname "${config_path}")"
+  generated_dir="${config_dir}/sarus-suite-build"
+  generated_path="${generated_dir}/devcontainer.json"
+
+  if docker_cli_is_podman && grep -q '"--userns=host"' "${config_path}"; then
+    mkdir -p "${generated_dir}"
+    sed \
+      -e 's/"dockerfile"[[:space:]]*:[[:space:]]*"Containerfile"/"dockerfile": "..\/Containerfile"/' \
+      -e 's/"context"[[:space:]]*:[[:space:]]*"\.\.\/\.\."/"context": "..\/..\/.."/' \
+      -e 's/"runArgs"[[:space:]]*:[[:space:]]*\["--userns=host"\]/"runArgs": ["--group-add=keep-groups"]/' \
+      "${config_path}" > "${generated_path}"
+    log "using Podman devcontainer config with keep-groups: ${generated_path}" >&2
+    printf '%s\n' "${generated_path}"
+    return 0
+  fi
+
+  printf '%s\n' "${config_path}"
+}
+
 verify_linux_binary_arch() {
   local path="$1"
   local info
@@ -78,7 +144,19 @@ if [ ! -d "${SARUSCTL_SRC_DIR}/.git" ]; then
 fi
 
 devcontainer_config="$(resolve_devcontainer_config)"
+devcontainer_config_path="$(prepare_devcontainer_config "${devcontainer_config}")"
 target_triple="$(resolve_target_triple)"
+devcontainer_uid="${SARUSCTL_DEVCONTAINER_UID:-$(id -u)}"
+devcontainer_gid="${SARUSCTL_DEVCONTAINER_GID:-1000}"
+if docker_cli_is_podman; then
+  devcontainer_gid="${SARUSCTL_DEVCONTAINER_GID:-$(id -g)}"
+fi
+devcontainer_env=(
+  env
+  "USER=${USER:-$(id -un)}"
+  "UID=${devcontainer_uid}"
+  "GID=${devcontainer_gid}"
+)
 
 build_cmd=$(cat <<BUILD
 set -euo pipefail
@@ -94,13 +172,13 @@ case "${SARUSCTL_BUILD_MODE}" in
     command -v devcontainer >/dev/null 2>&1 || die "need devcontainer CLI to build sarusctl"
     (
       cd "${SARUSCTL_SRC_DIR}"
-      devcontainer up \
+      "${devcontainer_env[@]}" devcontainer up \
         --workspace-folder . \
-        --config "${SARUSCTL_SRC_DIR}/${devcontainer_config}" >/dev/null
+        --config "${devcontainer_config_path}" >/dev/null
       cd /
-      devcontainer exec \
+      "${devcontainer_env[@]}" devcontainer exec \
         --workspace-folder "${SARUSCTL_SRC_DIR}" \
-        --config "${SARUSCTL_SRC_DIR}/${devcontainer_config}" \
+        --config "${devcontainer_config_path}" \
         bash -lc "cd /workspaces/\$(basename \"${SARUSCTL_SRC_DIR}\") && ${build_cmd}"
     )
     ;;
