@@ -39,6 +39,27 @@ sarusctl run ./sarus-suite/examples/ubuntu.toml cat /etc/os-release
 sarusctl run ./sarus-suite/examples/debian.toml cat /etc/os-release
 ```
 
+## Test local component binaries
+
+To test a locally built component with a downloaded bundle, import the new
+artifact while entering `sarus-suite-shell`:
+
+```sh
+./sarus-suite/bin/sarus-suite-shell \
+  --import-binary /path/to/sarusctl \
+  --import-binary /path/to/parallax-static:parallax
+```
+
+Performance-extension hooks can be imported from a build output directory:
+
+```sh
+./sarus-suite/bin/sarus-suite-shell \
+  --import-hook-dir /path/to/performance-extensions/target/release
+```
+
+`--import-hook-dir` copies every executable file in the directory into the
+bundle hook location and mirrors it into `bin/`.
+
 ## Build bundle
 
 Run the full bundle build with:
