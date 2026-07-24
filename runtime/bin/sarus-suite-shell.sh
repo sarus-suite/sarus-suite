@@ -4,7 +4,9 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage:
-  sarus-suite-shell [--parallax-store PATH] [--state-root PATH] [--bundle-root PATH] [-- COMMAND [ARGS...]]
+  sarus-suite-shell [--parallax-store PATH] [--state-root PATH] [--bundle-root PATH]
+                    [--import-binary PATH[:NAME]] [--import-hook-dir DIR]
+                    [-- COMMAND [ARGS...]]
 
 Launch a subshell (or one command) with a private XDG config tree pointing
 Podman and Parallax at the sarus-suite bundle and its helper binaries.
@@ -84,6 +86,52 @@ copy_tree_if_present() {
   fi
 }
 
+import_binary_spec() {
+  local spec="$1"
+  local src
+  local name
+
+  case "$spec" in
+    *:*)
+      src="${spec%%:*}"
+      name="${spec##*:}"
+      ;;
+    *)
+      src="$spec"
+      name="$(basename "$src")"
+      ;;
+  esac
+
+  [ -n "$src" ] || die "empty import source in: $spec"
+  [ -n "$name" ] || die "empty import name in: $spec"
+  [ -f "$src" ] || die "import binary not found: $src"
+  [ -x "$src" ] || die "import binary is not executable: $src"
+
+  install -Dm0755 "$src" "${SARUS_SUITE_BIN}/${name}"
+  log "imported binary ${name} into ${SARUS_SUITE_BIN}/${name}"
+}
+
+import_hook_dir() {
+  local dir="$1"
+  local path
+  local hook
+
+  [ -d "$dir" ] || die "import hook dir not found: $dir"
+  [ -d "${SARUS_SUITE_HOOK_BIN}" ] || die "bundle hook dir not found: ${SARUS_SUITE_HOOK_BIN}"
+
+  for path in "$dir"/*; do
+    [ -f "$path" ] || continue
+    [ -x "$path" ] || continue
+
+    hook="$(basename "$path")"
+    install -Dm0755 "$path" "${SARUS_SUITE_HOOK_BIN}/${hook}"
+    log "imported hook ${hook} into ${SARUS_SUITE_HOOK_BIN}/${hook}"
+
+    install -Dm0755 "$path" "${SARUS_SUITE_BIN}/${hook}"
+    log "mirrored hook ${hook} into ${SARUS_SUITE_BIN}/${hook}"
+  done
+}
+
 write_rcfile() {
   local rcfile="$1"
 
@@ -104,6 +152,8 @@ RCFILE
 PARALLAX_STORE_OVERRIDE=""
 STATE_ROOT_OVERRIDE=""
 BUNDLE_ROOT_OVERRIDE=""
+IMPORT_BINARIES=()
+IMPORT_HOOK_DIRS=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -120,6 +170,16 @@ while [ $# -gt 0 ]; do
     --bundle-root)
       [ $# -ge 2 ] || die "--bundle-root requires a path"
       BUNDLE_ROOT_OVERRIDE="$2"
+      shift 2
+      ;;
+    --import-binary)
+      [ $# -ge 2 ] || die "--import-binary requires PATH[:NAME]"
+      IMPORT_BINARIES+=("$2")
+      shift 2
+      ;;
+    --import-hook-dir)
+      [ $# -ge 2 ] || die "--import-hook-dir requires a directory"
+      IMPORT_HOOK_DIRS+=("$2")
       shift 2
       ;;
     --help|-h)
@@ -194,6 +254,14 @@ install -d -m 0700 "${LEGACY_CONTAINERS_CONFIG_DIR}" "${LEGACY_CONTAINERS_MODULE
 if [ "${EFFECTIVE_XDG_RUNTIME_DIR}" = "${SARUS_SUITE_RUNTIME}/xdg-runtime" ]; then
   install -d -m 0700 "${EFFECTIVE_XDG_RUNTIME_DIR}"
 fi
+
+for spec in "${IMPORT_BINARIES[@]}"; do
+  import_binary_spec "$spec"
+done
+
+for dir in "${IMPORT_HOOK_DIRS[@]}"; do
+  import_hook_dir "$dir"
+done
 
 render_template "${SARUS_SUITE_ETC}/containers/containers.conf" "${CONTAINERS_CONFIG_DIR}/containers.conf"
 render_template "${SARUS_SUITE_ETC}/containers/storage.conf" "${CONTAINERS_CONFIG_DIR}/storage.conf"
