@@ -4,7 +4,7 @@
     "path": "@@SARUS_SUITE_HOOK_BIN@@/mkhomedir"
   },
   "when": {
-    "always": false
+    "always": true
   },
   "stages": [
     "createRuntime"
