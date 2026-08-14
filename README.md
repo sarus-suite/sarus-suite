@@ -60,6 +60,54 @@ Performance-extension hooks can be imported from a build output directory:
 `--import-hook-dir` copies every executable file in the directory into the
 bundle hook location and mirrors it into `bin/`.
 
+## Install the bundle system-wide
+
+On a Linux host, the bundle can be installed once for all users instead of
+entering `sarus-suite-shell` for every session:
+
+```sh
+sudo ./sarus-suite/bin/sarus-suite-system-install
+```
+
+The default installation:
+
+* copies commands to `/usr/local/bin` and OCI hook executables to
+  `/usr/local/libexec/sarus-suite/oci/hooks`;
+* renders Podman configuration below `/etc/containers`, Parallax configuration
+  at `/etc/parallax-mount.conf`, and sarusctl configuration below
+  `/etc/sarus-suite`;
+* configures a separate Parallax store for each user at
+  `~/.sarus-suite/ro-store`, created on first Sarus use;
+* installs `/etc/profile.d/sarus-suite.sh` so the selected binary directory is
+  on `PATH` in future login shells; and
+* writes and prints `/var/log/sarus-suite-install-report.txt`, listing every
+  created, updated, and unchanged path considered by the installation.
+
+Podman's graph and runtime roots are intentionally not made global. Rootless
+users continue to get Podman's normal per-user writable storage, and each user
+gets an independent Parallax image store. Sarusctl passes that resolved store
+to Podman for each invocation, avoiding an invalid dynamic path in Podman's
+system-wide storage configuration. Parallax mount temporary files and logs also
+retain their per-user `/tmp/parallax-<uid>` defaults.
+
+The installer performs a complete collision check before it writes anything.
+It refuses to replace a differing file unless `--force` is supplied. Preview
+an installation and its report without modifying the host with:
+
+```sh
+./sarus-suite/bin/sarus-suite-system-install --dry-run
+```
+
+Common deployment overrides include `--prefix`, `--bin-dir`,
+`--parallax-store`, and `--report`. Supplying `--state-dir` retains the legacy
+shared-store layout at `STATE_DIR/parallax/ro-store`; it is not needed for the
+default per-user store. `--install-root` stages the same logical system layout
+below another directory for image/package construction. Run
+`sarus-suite-system-install --help` for the complete interface.
+
+After installation, start a new login shell and invoke `podman`, `parallax`,
+`sarusctl`, or `sarus-suite-check` directly. `sarus-suite-shell` is not needed.
+
 ## Build bundle
 
 Run the full bundle build with:

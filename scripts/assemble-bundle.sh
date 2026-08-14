@@ -61,6 +61,7 @@ install_bin "${FUSE_OVERLAYFS_BIN}" fuse-overlayfs
 install_bin "${FUSERMOUNT3_BIN}" fusermount3 4755
 install_bin "${BWRAP_BIN}" bwrap
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-shell.sh" sarus-suite-shell
+install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-system-install.sh" sarus-suite-system-install
 
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/containers.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/storage.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf"
@@ -79,6 +80,11 @@ if [ -d "${ROOT_DIR}/runtime/etc/containers/registries.d" ]; then
 fi
 install -Dm0644 "${ROOT_DIR}/runtime/etc/parallax/parallax-mount.conf" "${RUNTIME_PARALLAX_ETC_DIR}/parallax-mount.conf"
 install -Dm0644 "${ROOT_DIR}/runtime/etc/sarus-suite/90-sarusctl.conf" "${RUNTIME_SARUS_SUITE_ETC_DIR}/90-sarusctl.conf"
+mkdir -p "${BUNDLE_ROOT}/etc/system/containers"
+install -Dm0644 "${ROOT_DIR}/runtime/etc/system/containers/containers.conf" "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
+install -Dm0644 "${ROOT_DIR}/runtime/etc/system/containers/storage.conf" "${BUNDLE_ROOT}/etc/system/containers/storage.conf"
+install -Dm0644 "${ROOT_DIR}/runtime/etc/system/parallax-mount.conf" "${BUNDLE_ROOT}/etc/system/parallax-mount.conf"
+install -Dm0644 "${ROOT_DIR}/runtime/etc/system/90-sarusctl.conf" "${BUNDLE_ROOT}/etc/system/90-sarusctl.conf"
 
 if [ -d "${ROOT_DIR}/runtime/examples" ]; then
   mkdir -p "${BUNDLE_ROOT}/examples"

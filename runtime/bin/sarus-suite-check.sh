@@ -51,54 +51,78 @@ EOF
 }
 
 main() {
+  local layout_file install_mode containers_config_dir sarusctl_config_file
+
+  layout_file="${SARUS_SUITE_LAYOUT_FILE:-/etc/sarus-suite/install-layout}"
+  if [ -z "${SARUS_SUITE_ROOT:-}" ] && [ -r "$layout_file" ]; then
+    # shellcheck disable=SC1090
+    source "$layout_file"
+  fi
+
+  : "${SARUS_SUITE_ROOT:?run inside sarus-suite-shell or install with sarus-suite-system-install}"
+  : "${SARUS_SUITE_BIN:?missing SARUS_SUITE_BIN}"
+  : "${SARUS_SUITE_HOOK_BIN:?missing SARUS_SUITE_HOOK_BIN}"
+
+  install_mode="${SARUS_SUITE_INSTALL_MODE:-shell}"
+  if [ "$install_mode" = "system" ]; then
+    PATH="${SARUS_SUITE_BIN}:${PATH:-/usr/bin:/bin}"
+    export PATH
+    : "${SARUS_SUITE_ETC:?missing SARUS_SUITE_ETC from system layout}"
+    containers_config_dir="${SARUS_SUITE_ETC}/containers"
+    CONTAINERS_POLICY="${CONTAINERS_POLICY:-${containers_config_dir}/policy.json}"
+    PARALLAX_MP_CONFIG="${PARALLAX_MP_CONFIG:-${SARUS_SUITE_ETC}/parallax-mount.conf}"
+    SARUSCTL_CONFIG_DIR="${SARUSCTL_CONFIG_DIR:-${SARUS_SUITE_ETC}/sarus-suite}"
+    sarusctl_config_file="${SARUSCTL_CONFIG_DIR}/90-sarusctl.conf"
+  else
+    : "${XDG_CONFIG_HOME:?missing XDG_CONFIG_HOME}"
+    : "${CONTAINERS_POLICY:?missing CONTAINERS_POLICY}"
+    : "${PARALLAX_MP_CONFIG:?missing PARALLAX_MP_CONFIG}"
+    : "${SARUSCTL_CONFIG_DIR:?missing SARUSCTL_CONFIG_DIR}"
+    containers_config_dir="${XDG_CONFIG_HOME}/containers"
+    sarusctl_config_file="${SARUSCTL_CONFIG_DIR}/90-sarus-suite-bundle.conf"
+  fi
+
   require_cmd podman
   require_cmd parallax
   require_cmd sarusctl
   require_cmd grep
 
-  : "${SARUS_SUITE_ROOT:?run this inside sarus-suite-shell or via 'sarus-suite-shell -- sarus-suite-check'}"
-  : "${SARUS_SUITE_BIN:?missing SARUS_SUITE_BIN}"
-  : "${SARUS_SUITE_HOOK_BIN:?missing SARUS_SUITE_HOOK_BIN}"
-  : "${XDG_CONFIG_HOME:?missing XDG_CONFIG_HOME}"
-  : "${CONTAINERS_POLICY:?missing CONTAINERS_POLICY}"
-  : "${PARALLAX_MP_CONFIG:?missing PARALLAX_MP_CONFIG}"
-  : "${SARUSCTL_CONFIG_DIR:?missing SARUSCTL_CONFIG_DIR}"
-
+  log "install mode: ${install_mode}"
   log "bundle root: ${SARUS_SUITE_ROOT}"
   log "bundle bin: ${SARUS_SUITE_BIN}"
   log "hook bin: ${SARUS_SUITE_HOOK_BIN}"
-  log "config home: ${XDG_CONFIG_HOME}"
+  log "containers config dir: ${containers_config_dir}"
   log "containers policy: ${CONTAINERS_POLICY}"
   log "parallax mount config: ${PARALLAX_MP_CONFIG}"
   log "sarusctl config dir: ${SARUSCTL_CONFIG_DIR}"
 
-  require_file "${XDG_CONFIG_HOME}/containers/containers.conf"
-  require_file "${XDG_CONFIG_HOME}/containers/storage.conf"
-  require_file "${XDG_CONFIG_HOME}/containers/registries.conf"
-  require_file "${XDG_CONFIG_HOME}/containers/containers.conf.modules/hpc"
+  require_file "${containers_config_dir}/containers.conf"
+  require_file "${containers_config_dir}/storage.conf"
+  require_file "${containers_config_dir}/registries.conf"
+  require_file "${containers_config_dir}/containers.conf.modules/hpc"
   require_file "${CONTAINERS_POLICY}"
-  require_file "${XDG_CONFIG_HOME}/containers/seccomp.json"
-  require_dir "${XDG_CONFIG_HOME}/containers/oci/hooks.d"
-  require_file "${XDG_CONFIG_HOME}/containers/oci/hooks.d/10-ldcache.json"
-  require_file "${XDG_CONFIG_HOME}/containers/oci/hooks.d/20-mps.json"
-  require_file "${XDG_CONFIG_HOME}/containers/oci/hooks.d/30-pce.json"
-  require_file "${XDG_CONFIG_HOME}/containers/oci/hooks.d/40-pc-injection.json"
-  require_file "${XDG_CONFIG_HOME}/containers/oci/hooks.d/50-mkhomedir.json"
-  require_file "${XDG_CONFIG_HOME}/containers/oci/hooks.d/60-sethomevar.json"
+  require_file "${containers_config_dir}/seccomp.json"
+  require_dir "${containers_config_dir}/oci/hooks.d"
+  require_file "${containers_config_dir}/oci/hooks.d/10-ldcache.json"
+  require_file "${containers_config_dir}/oci/hooks.d/20-mps.json"
+  require_file "${containers_config_dir}/oci/hooks.d/30-pce.json"
+  require_file "${containers_config_dir}/oci/hooks.d/40-pc-injection.json"
+  require_file "${containers_config_dir}/oci/hooks.d/50-mkhomedir.json"
+  require_file "${containers_config_dir}/oci/hooks.d/60-sethomevar.json"
   require_file "${PARALLAX_MP_CONFIG}"
-  require_file "${SARUSCTL_CONFIG_DIR}/90-sarus-suite-bundle.conf"
+  require_file "${sarusctl_config_file}"
   require_executable "${SARUS_SUITE_HOOK_BIN}/ldcache_hook"
   require_executable "${SARUS_SUITE_HOOK_BIN}/mps_hook"
   require_executable "${SARUS_SUITE_HOOK_BIN}/pce_hook"
   require_executable "${SARUS_SUITE_HOOK_BIN}/pc_injection_hook"
   require_executable "${SARUS_SUITE_HOOK_BIN}/mkhomedir"
   require_executable "${SARUS_SUITE_HOOK_BIN}/sethomevar"
-  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/ldcache_hook\"" "${XDG_CONFIG_HOME}/containers/oci/hooks.d/10-ldcache.json" || die "ldcache hook config does not reference ${SARUS_SUITE_HOOK_BIN}/ldcache_hook"
-  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/mps_hook\"" "${XDG_CONFIG_HOME}/containers/oci/hooks.d/20-mps.json" || die "mps hook config does not reference ${SARUS_SUITE_HOOK_BIN}/mps_hook"
-  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pce_hook\"" "${XDG_CONFIG_HOME}/containers/oci/hooks.d/30-pce.json" || die "pce hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pce_hook"
-  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pc_injection_hook\"" "${XDG_CONFIG_HOME}/containers/oci/hooks.d/40-pc-injection.json" || die "pc-injection hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pc_injection_hook"
-  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/mkhomedir\"" "${XDG_CONFIG_HOME}/containers/oci/hooks.d/50-mkhomedir.json" || die "mkhomedir hook config does not reference ${SARUS_SUITE_HOOK_BIN}/mkhomedir"
-  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/sethomevar\"" "${XDG_CONFIG_HOME}/containers/oci/hooks.d/60-sethomevar.json" || die "sethomevar hook config does not reference ${SARUS_SUITE_HOOK_BIN}/sethomevar"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/ldcache_hook\"" "${containers_config_dir}/oci/hooks.d/10-ldcache.json" || die "ldcache hook config does not reference ${SARUS_SUITE_HOOK_BIN}/ldcache_hook"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/mps_hook\"" "${containers_config_dir}/oci/hooks.d/20-mps.json" || die "mps hook config does not reference ${SARUS_SUITE_HOOK_BIN}/mps_hook"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pce_hook\"" "${containers_config_dir}/oci/hooks.d/30-pce.json" || die "pce hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pce_hook"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pc_injection_hook\"" "${containers_config_dir}/oci/hooks.d/40-pc-injection.json" || die "pc-injection hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pc_injection_hook"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/mkhomedir\"" "${containers_config_dir}/oci/hooks.d/50-mkhomedir.json" || die "mkhomedir hook config does not reference ${SARUS_SUITE_HOOK_BIN}/mkhomedir"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/sethomevar\"" "${containers_config_dir}/oci/hooks.d/60-sethomevar.json" || die "sethomevar hook config does not reference ${SARUS_SUITE_HOOK_BIN}/sethomevar"
 
   check_cmd_path podman
   check_cmd_path parallax
