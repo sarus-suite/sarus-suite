@@ -69,6 +69,20 @@ entering `sarus-suite-shell` for every session:
 sudo ./sarus-suite/bin/sarus-suite-system-install
 ```
 
+For VM or host testing, the system installer can replace a bundled binary and
+install newly built hooks directly into the target installation. These imports
+do not modify the extracted bundle; they are recorded in the install report:
+
+```sh
+sudo ./sarus-suite/bin/sarus-suite-system-install --force \
+  --import-binary /path/to/sarusctl \
+  --import-binary /path/to/parallax-static:parallax \
+  --import-hook-dir /path/to/performance-extensions/target/release
+```
+
+An imported hook replaces the hook with the same name in the OCI hook
+directory and is mirrored into the installed binary directory.
+
 The default installation:
 
 * copies commands to `/usr/local/bin` and OCI hook executables to

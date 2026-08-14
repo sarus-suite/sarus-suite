@@ -20,6 +20,10 @@ Options:
                           unless --parallax-store is also supplied
   --parallax-store PATH   Parallax image store. The default is per-user:
                           $HOME/.sarus-suite/ro-store
+  --import-binary SPEC    Install executable PATH[:NAME] in place of a bundled
+                          binary; may be supplied more than once
+  --import-hook-dir DIR   Install each executable file in DIR as an OCI hook
+                          and mirror it into BIN_DIR; may be supplied more than once
   --report FILE           Persistent install report
                           (default: /var/log/sarus-suite-install-report.txt)
   --install-root DIR      Prepend DIR to destinations for staging/testing
@@ -60,6 +64,61 @@ is_per_user_store_path() {
     '$HOME/'*|'${HOME}/'*) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+validate_import_name() {
+  local name="$1"
+
+  [ -n "$name" ] || die "import destination name cannot be empty"
+  [ "$name" != "." ] && [ "$name" != ".." ] || die "unsafe import destination name: ${name}"
+  case "$name" in
+    */*|*$'\n'*) die "unsafe import destination name: ${name}" ;;
+  esac
+}
+
+register_import_binary() {
+  local spec="$1"
+  local src
+  local name
+
+  case "$spec" in
+    *:*)
+      src="${spec%%:*}"
+      name="${spec##*:}"
+      ;;
+    *)
+      src="$spec"
+      name="$(basename "$src")"
+      ;;
+  esac
+
+  [ -f "$src" ] || die "import binary not found: ${src}"
+  [ -x "$src" ] || die "import binary is not executable: ${src}"
+  validate_import_name "$name"
+  [ -z "${IMPORTED_BINARIES[$name]+present}" ] || die "duplicate imported binary name: ${name}"
+  [ -z "${IMPORTED_HOOKS[$name]+present}" ] || die "imported binary conflicts with imported hook: ${name}"
+
+  IMPORTED_BINARIES["$name"]="$src"
+  IMPORTED_BINARY_NAMES+=("$name")
+}
+
+register_import_hook_dir() {
+  local dir="$1"
+  local src
+  local name
+
+  [ -d "$dir" ] || die "import hook dir not found: ${dir}"
+  for src in "$dir"/*; do
+    [ -f "$src" ] || continue
+    [ -x "$src" ] || continue
+    name="$(basename "$src")"
+    validate_import_name "$name"
+    [ -z "${IMPORTED_HOOKS[$name]+present}" ] || die "duplicate imported hook name: ${name}"
+    [ -z "${IMPORTED_BINARIES[$name]+present}" ] || die "imported hook conflicts with imported binary: ${name}"
+
+    IMPORTED_HOOKS["$name"]="$src"
+    IMPORTED_HOOK_NAMES+=("$name")
+  done
 }
 
 strip_trailing_slash() {
@@ -233,6 +292,8 @@ REPORT_FILE="/var/log/sarus-suite-install-report.txt"
 INSTALL_ROOT=""
 FORCE=0
 DRY_RUN=0
+IMPORT_BINARY_SPECS=()
+IMPORT_HOOK_DIRS=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -266,6 +327,16 @@ while [ $# -gt 0 ]; do
       [ $# -ge 2 ] || die "--parallax-store requires a directory"
       PARALLAX_STORE="$2"
       PARALLAX_STORE_SET=1
+      shift 2
+      ;;
+    --import-binary)
+      [ $# -ge 2 ] || die "--import-binary requires PATH[:NAME]"
+      IMPORT_BINARY_SPECS+=("$2")
+      shift 2
+      ;;
+    --import-hook-dir)
+      [ $# -ge 2 ] || die "--import-hook-dir requires a directory"
+      IMPORT_HOOK_DIRS+=("$2")
       shift 2
       ;;
     --report)
@@ -361,6 +432,17 @@ SYSTEM_TEMPLATE_DIR="${BUNDLE_ETC}/system"
 [ -f "${BUNDLE_ETC}/containers/policy.json" ] || die "bundle policy.json not found"
 [ -f "${BUNDLE_ETC}/containers/seccomp.json" ] || die "bundle seccomp.json not found"
 
+declare -A IMPORTED_BINARIES=()
+declare -A IMPORTED_HOOKS=()
+IMPORTED_BINARY_NAMES=()
+IMPORTED_HOOK_NAMES=()
+for spec in "${IMPORT_BINARY_SPECS[@]}"; do
+  register_import_binary "$spec"
+done
+for dir in "${IMPORT_HOOK_DIRS[@]}"; do
+  register_import_hook_dir "$dir"
+done
+
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sarus-suite-system-install.XXXXXX")"
 trap 'rm -rf "${WORK_DIR}"' EXIT INT TERM
 WORK_REPORT="${WORK_DIR}/install-report.txt"
@@ -380,6 +462,13 @@ dry_run=${DRY_RUN}
 
 Changes:
 REPORT_HEADER
+
+for name in "${IMPORTED_BINARY_NAMES[@]}"; do
+  record "IMPORT" "binary ${name} from ${IMPORTED_BINARIES[$name]}"
+done
+for name in "${IMPORTED_HOOK_NAMES[@]}"; do
+  record "IMPORT" "hook ${name} from ${IMPORTED_HOOKS[$name]} (also mirrored into ${BIN_DIR})"
+done
 
 render_template "${SYSTEM_TEMPLATE_DIR}/containers/containers.conf" "${WORK_DIR}/rendered/containers/containers.conf"
 render_template "${SYSTEM_TEMPLATE_DIR}/containers/storage.conf" "${WORK_DIR}/rendered/containers/storage.conf"
@@ -425,11 +514,30 @@ declare -A REPORTED_DIRS=()
 for src in "${BUNDLE_BIN}"/*; do
   [ -f "$src" ] || continue
   [ -x "$src" ] || die "bundle bin entry is not executable: ${src}"
+  name="$(basename "$src")"
+  if [ -n "${IMPORTED_BINARIES[$name]+present}" ] || [ -n "${IMPORTED_HOOKS[$name]+present}" ]; then
+    continue
+  fi
   mode=0755
-  [ "$(basename "$src")" != "fusermount3" ] || mode=4755
-  add_file "$src" "${BIN_DIR}/$(basename "$src")" "$mode"
+  [ "$name" != "fusermount3" ] || mode=4755
+  add_file "$src" "${BIN_DIR}/${name}" "$mode"
 done
-add_tree "$BUNDLE_HOOK_BIN" "$LIBEXEC_DIR" 0755
+for src in "${BUNDLE_HOOK_BIN}"/*; do
+  [ -f "$src" ] || continue
+  [ -x "$src" ] || die "bundle hook entry is not executable: ${src}"
+  name="$(basename "$src")"
+  [ -z "${IMPORTED_HOOKS[$name]+present}" ] || continue
+  add_file "$src" "${LIBEXEC_DIR}/${name}" 0755
+done
+for name in "${IMPORTED_BINARY_NAMES[@]}"; do
+  mode=0755
+  [ "$name" != "fusermount3" ] || mode=4755
+  add_file "${IMPORTED_BINARIES[$name]}" "${BIN_DIR}/${name}" "$mode"
+done
+for name in "${IMPORTED_HOOK_NAMES[@]}"; do
+  add_file "${IMPORTED_HOOKS[$name]}" "${LIBEXEC_DIR}/${name}" 0755
+  add_file "${IMPORTED_HOOKS[$name]}" "${BIN_DIR}/${name}" 0755
+done
 add_file "${WORK_DIR}/rendered/containers/containers.conf" /etc/containers/containers.conf 0644
 add_file "${WORK_DIR}/rendered/containers/storage.conf" /etc/containers/storage.conf 0644
 add_file "${BUNDLE_ETC}/containers/registries.conf" /etc/containers/registries.conf 0644
