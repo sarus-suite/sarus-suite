@@ -19,7 +19,7 @@ helpers, default configs, examples, and check scripts in one portable directory.
 Pick the artifact for your host architecture:
 
 ```sh
-VERSION=v0.0.4
+VERSION=v26.7.3
 ARCH=amd64   # or arm64
 
 curl -LO "https://github.com/sarus-suite/sarus-suite/releases/download/${VERSION}/sarus-suite-${VERSION}-${ARCH}.tar.gz"
