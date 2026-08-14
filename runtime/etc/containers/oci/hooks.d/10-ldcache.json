@@ -7,7 +7,6 @@
     ]
   },
   "when": {
-    "always": false,
     "annotations": {
       "ldcache.enable": "^true$"
     }
