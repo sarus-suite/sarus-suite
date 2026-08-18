@@ -10,6 +10,12 @@ This repository packages the moving parts needed by Sarus-Suite, an HPC-style co
 * Provides sarus-suite-shell, which creates private config/state dirs and puts bundled tools on PATH.
 * Configures Podman overlay storage to use a Parallax-aware mount program and a read-only Parallax image store.
 
+## Bundle layout
+
+The bundle groups user-facing tools with their runtime helpers, configuration,
+OCI hooks, and supporting artifacts.
+
+![Sarus-Suite bundle layout](sarus-suite-bundle-artifacts.png)
 
 ## Try the released bundle locally
 
@@ -19,7 +25,7 @@ helpers, default configs, examples, and check scripts in one portable directory.
 Pick the artifact for your host architecture:
 
 ```sh
-VERSION=v26.7.3
+VERSION=v26.8.1
 ARCH=amd64   # or arm64
 
 curl -LO "https://github.com/sarus-suite/sarus-suite/releases/download/${VERSION}/sarus-suite-${VERSION}-${ARCH}.tar.gz"
