@@ -1,0 +1,229 @@
+direction: right
+
+# Sarus Suite bundle: shipped artifacts and the binaries they configure or invoke.
+# Solid arrows describe runtime use; dashed arrows describe generated configuration.
+
+classes: {
+  card_base: {
+    shape: rectangle
+    width: 250
+    height: 120
+    style: {
+      fill: white
+      stroke: "#2878B5"
+    }
+  }
+}
+
+bundle: "Sarus-Suite Bundle" {
+  direction: down
+  grid-columns: 1
+  style.fill: "#F8FBFF"
+  style.stroke: "#2878B5"
+  style.stroke-width: 2
+  grid-gap: 120
+
+  entrypoints: "User-facing components" {
+    direction: down
+    grid-columns: 1
+    grid-gap: 60
+    style.fill: "#FFF8E1"
+    style.stroke: "#B7791F"
+    row: {
+      label: ""
+      direction: right
+      style.fill: transparent
+      style.stroke: transparent
+
+      spacer: {
+        label: ""
+        style.opacity: 0
+        width: 100
+      }
+
+      shell: |md
+        # sarus-suite-shell
+        - Activates private runtime
+        - Prepare tool configurations
+        - Import runtime dependencies
+      | {shape: rectangle}
+      check: |md
+        # sarus-suite-check
+        Validates active bundle
+      | {shape: rectangle}
+      sarusctl: |md
+        # sarusctl / skybox
+        - User HPC workflows
+        - EDF parser
+        - Orchestrate podman / parallax
+      | {shape: rectangle}
+      podman: |md
+        # podman
+        - Container manager
+        - Demonless and Rootless
+        - OCI compliant
+        - CDI support
+      | {shape: rectangle}
+      parallax: |md
+        # Parallax
+        - HPC image store manager
+        - migrate / list / rmi
+      | {shape: rectangle}
+      mount_program: |md
+        # parallax-mount-program
+        - HPC image store helper
+        - FUSE mount
+      | {shape: rectangle}
+
+      spacer -> shell: {style.opacity: 0}
+
+      shell -> sarusctl: exposes
+      shell -> check: readiness check
+      shell -> podman: exposes
+      shell -> parallax: exposes
+
+      sarusctl -> podman: launches
+      sarusctl -> parallax: manage
+      podman -> mount_program: HPC mounts
+    }
+  }
+
+  supporting: "Support Contents" {
+    direction: right
+    grid-columns: 1
+    grid-gap: 0
+
+    row1: {
+      label: ""
+      grid-columns: 2
+      style.fill: transparent
+      style.stroke: transparent
+
+      containers_config: "etc/containers/" {
+        direction: right
+        grid-columns: 4
+        style.fill: "#FFF5F5"
+        style.stroke: "#C53030"
+
+        base: "base configuration" {
+          direction: down
+          grid-columns: 2
+          containers: containers.conf
+          storage: storage.conf
+          registries: registries.conf
+          policy: policy.json
+          seccomp: seccomp.json
+        }
+        modules: "containers.conf.modules/" {
+          hpc: hpc
+        }
+        oci_hooks: "oci/hooks.d/" {
+          direction: right
+          grid-columns: 2
+          ldcache_spec: 10-ldcache.json
+          mps_spec: 20-mps.json
+          pce_spec: 30-pce.json
+          pc_injection_spec: 40-pc-injection.json
+          mkhomedir_spec: 50-mkhomedir.json
+          sethomevar_spec: 60-sethomevar.json
+        }
+        optional: "optional directories" {
+          grid-columns: 1
+          cdi: "cdi/\ndevice specifications"
+          registries_d: "registries.d/\nregistry data"
+        }
+      }
+
+      podman_helpers: "bin/ — Podman runtime helpers" {
+        direction: right
+        grid-columns: 2
+        style.fill: "#E8F4FD"
+        style.stroke: "#2878B5"
+
+        crun: crun
+        conmon: conmon
+        pasta: pasta
+        netavark: netavark
+        aardvark_dns: aardvark-dns
+        rootlessport: rootlessport
+        catatonit: catatonit
+      }
+    }
+
+    row2: {
+      label: ""
+      grid-columns: 4
+      style.fill: transparent
+      style.stroke: transparent
+
+      storage_helpers: "bin/ — image and mount helpers" {
+        grid-columns: 2
+        style.fill: "#EAF7F0"
+        style.stroke: "#27815A"
+
+        overlay: fuse-overlayfs
+        squash: squashfuse_ll
+        watch: inotifywait
+        fuse: "fusermount3 (setuid)"
+        mksquashfs: mksquashfs
+        rsync: rsync
+      }
+
+      hook_binaries: "libexec/oci/hooks/" {
+        direction: right
+        grid-columns: 2
+        style.fill: "#F5EEFF"
+        style.stroke: "#6B46C1"
+
+        ldcache: ldcache_hook
+        mps: mps_hook
+        pce: pce_hook
+        pc_injection: pc_injection_hook
+        mkhomedir: mkhomedir
+        sethomevar: sethomevar
+      }
+
+      suite_config: "etc/parallax/ and etc/sarus-suite/" {
+        direction: right
+        grid-columns: 1
+        style.fill: "#FFF8E1"
+        style.stroke: "#B7791F"
+
+        parallax: "parallax/" {
+          mount_config: parallax-mount.conf
+        }
+        sarus_suite: "sarus-suite/" {
+          sarusctl_config: 90-sarusctl.conf
+        }
+      }
+
+      metadata: "examples/ and share/" {
+        direction: right
+        grid-columns: 2
+        style.fill: "#F2F4F7"
+        style.stroke: "#64748B"
+
+        examples: "examples/" {
+          grid-columns: 1
+          ubuntu: ubuntu.toml
+          debian: debian.toml
+        }
+        share: "share/" {
+          grid-columns: 1
+          manifest: manifest.txt
+          licenses: "licenses/\nparallax-LICENSE"
+        }
+      }
+    }
+  }
+}
+
+bundle.style.font-size: 60
+bundle.entrypoints.style.font-size: 40
+bundle.supporting.style.font-size: 40
+
+style: {
+  font-size: 15
+  animated: false
+}
+
