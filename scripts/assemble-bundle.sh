@@ -94,6 +94,7 @@ fi
 if [ -f "${PARALLAX_SRC_DIR}/LICENSE" ]; then
   install -Dm0644 "${PARALLAX_SRC_DIR}/LICENSE" "${RUNTIME_LICENSE_DIR}/parallax-LICENSE"
 fi
+install -Dm0644 "${ROOT_DIR}/LICENSE" "${RUNTIME_LICENSE_DIR}/sarus-suite-LICENSE"
 
 parallax_sha='unknown'
 if [ -d "${PARALLAX_SRC_DIR}/.git" ]; then

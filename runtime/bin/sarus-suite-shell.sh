@@ -34,10 +34,20 @@ render_template() {
   local src="$1"
   local dest="$2"
   local cdi_spec_dirs_line=""
+  local podman_graphroot_line podman_runroot_line podman_storage_options_header additional_imagestores_line
+  local parallax_tmpdir_line parallax_logfile_line parallax_mp_logfile_line podman_tmp_path_line
 
   if [ -d "${BUNDLE_CDI_DIR}" ]; then
     cdi_spec_dirs_line="cdi_spec_dirs = [\"${BUNDLE_CDI_DIR}\"]"
   fi
+  podman_graphroot_line="graphroot = \"${SARUS_SUITE_PODMAN_ROOT}\""
+  podman_runroot_line="runroot = \"${SARUS_SUITE_PODMAN_RUNROOT}\""
+  podman_storage_options_header="[storage.options]"
+  additional_imagestores_line="additionalimagestores = [\"${SARUS_SUITE_PARALLAX_STORE}\"]"
+  parallax_tmpdir_line="PARALLAX_MP_TMPDIR=\"${SARUS_SUITE_RUNTIME}/parallax-mount\""
+  parallax_logfile_line="PARALLAX_MP_LOGFILE=\"${SARUS_SUITE_STATE}/logs/parallax-mount.log\""
+  parallax_mp_logfile_line="parallax_mp_logfile = \"${SARUS_SUITE_STATE}/logs/parallax-mount.log\""
+  podman_tmp_path_line="podman_tmp_path = \"${SARUS_SUITE_RUNTIME}/tmp\""
 
   sed \
     -e "s|@@SARUS_SUITE_BIN@@|$(escape_sed_replacement "${SARUS_SUITE_BIN}")|g" \
@@ -49,6 +59,14 @@ render_template() {
     -e "s|@@SARUS_SUITE_PODMAN_RUNROOT@@|$(escape_sed_replacement "${SARUS_SUITE_PODMAN_RUNROOT}")|g" \
     -e "s|@@SARUS_SUITE_PARALLAX_STORE@@|$(escape_sed_replacement "${SARUS_SUITE_PARALLAX_STORE}")|g" \
     -e "s|@@SARUS_SUITE_CDI_SPEC_DIRS@@|$(escape_sed_replacement "${cdi_spec_dirs_line}")|g" \
+    -e "s|@@SARUS_SUITE_PODMAN_GRAPHROOT_LINE@@|$(escape_sed_replacement "${podman_graphroot_line}")|g" \
+    -e "s|@@SARUS_SUITE_PODMAN_RUNROOT_LINE@@|$(escape_sed_replacement "${podman_runroot_line}")|g" \
+    -e "s|@@SARUS_SUITE_PODMAN_STORAGE_OPTIONS_HEADER@@|$(escape_sed_replacement "${podman_storage_options_header}")|g" \
+    -e "s|@@SARUS_SUITE_PODMAN_ADDITIONAL_IMAGESTORES_LINE@@|$(escape_sed_replacement "${additional_imagestores_line}")|g" \
+    -e "s|@@SARUS_SUITE_PARALLAX_TMPDIR_LINE@@|$(escape_sed_replacement "${parallax_tmpdir_line}")|g" \
+    -e "s|@@SARUS_SUITE_PARALLAX_LOGFILE_LINE@@|$(escape_sed_replacement "${parallax_logfile_line}")|g" \
+    -e "s|@@SARUS_SUITE_PARALLAX_MP_LOGFILE_LINE@@|$(escape_sed_replacement "${parallax_mp_logfile_line}")|g" \
+    -e "s|@@SARUS_SUITE_PODMAN_TMP_PATH_LINE@@|$(escape_sed_replacement "${podman_tmp_path_line}")|g" \
     "$src" > "$dest"
 }
 

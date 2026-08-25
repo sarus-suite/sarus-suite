@@ -77,3 +77,4 @@ fi
 [ -f "${BUNDLE_ROOT}/examples/ubuntu.toml" ]
 [ -f "${BUNDLE_ROOT}/examples/debian.toml" ]
 [ -f "${RUNTIME_MANIFEST}" ]
+[ -f "${RUNTIME_LICENSE_DIR}/sarus-suite-LICENSE" ]
