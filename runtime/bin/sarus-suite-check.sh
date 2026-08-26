@@ -51,23 +51,41 @@ EOF
 }
 
 main() {
-  local layout_file install_mode containers_config_dir sarusctl_config_file
+  local layout_file install_mode containers_config_dir sarusctl_config_file script_path
 
+  # The installer records its fixed layout in a sourced file. Keep the
+  # path-based fallback for RPM installations, which do not need a generated
+  # layout file.
   layout_file="${SARUS_SUITE_LAYOUT_FILE:-/etc/sarus-suite/install-layout}"
   if [ -z "${SARUS_SUITE_ROOT:-}" ] && [ -r "$layout_file" ]; then
     # shellcheck disable=SC1090
     source "$layout_file"
   fi
 
+  script_path=""
+  if command -v readlink >/dev/null 2>&1; then
+    script_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || true)"
+  fi
+  # In case this is an RPM install, we need to set the SARUS_SUITE_* env vars as needed by the shell
+  if [ -z "${SARUS_SUITE_ROOT:-}" ] && [ "$script_path" = /opt/sarus-suite/bin/sarus-suite-check ]; then
+    SARUS_SUITE_INSTALL_MODE=system
+    SARUS_SUITE_ROOT=/opt/sarus-suite
+    SARUS_SUITE_BIN=/opt/sarus-suite/bin
+    SARUS_SUITE_HOOK_BIN=/opt/sarus-suite/libexec/oci/hooks
+    SARUS_SUITE_ETC=/etc
+  fi
+
+  # Exit on error for missing settings.
   : "${SARUS_SUITE_ROOT:?run inside sarus-suite-shell or install with sarus-suite-system-install}"
   : "${SARUS_SUITE_BIN:?missing SARUS_SUITE_BIN}"
   : "${SARUS_SUITE_HOOK_BIN:?missing SARUS_SUITE_HOOK_BIN}"
 
+  # Set up paths for a system install/RPM versus a portable shell bundle.
   install_mode="${SARUS_SUITE_INSTALL_MODE:-shell}"
   if [ "$install_mode" = "system" ]; then
     PATH="${SARUS_SUITE_BIN}:${PATH:-/usr/bin:/bin}"
     export PATH
-    : "${SARUS_SUITE_ETC:?missing SARUS_SUITE_ETC from system layout}"
+    : "${SARUS_SUITE_ETC:?missing SARUS_SUITE_ETC for system installation}"
     containers_config_dir="${SARUS_SUITE_ETC}/containers"
     CONTAINERS_POLICY="${CONTAINERS_POLICY:-${containers_config_dir}/policy.json}"
     PARALLAX_MP_CONFIG="${PARALLAX_MP_CONFIG:-${SARUS_SUITE_ETC}/parallax-mount.conf}"
@@ -132,8 +150,12 @@ main() {
   check_cmd_path pasta
   check_cmd_path netavark
   check_cmd_path aardvark-dns
-  check_cmd_path rootlessport
   check_cmd_path catatonit
+  if [ -x "${SARUS_SUITE_BIN}/rootlessport" ]; then
+    log "command rootlessport: ${SARUS_SUITE_BIN}/rootlessport"
+  else
+    log "command rootlessport: not bundled (optional)"
+  fi
   check_cmd_path mksquashfs
   check_cmd_path squashfuse_ll
   check_cmd_path fuse-overlayfs
