@@ -23,6 +23,15 @@ verify_static_elf() {
 }
 
 verify_static_elf "${RUNTIME_BIN_DIR}/podman"
+verify_static_elf "${RUNTIME_BIN_DIR}/crun"
+verify_static_elf "${RUNTIME_BIN_DIR}/pasta"
+verify_static_elf "${RUNTIME_BIN_DIR}/conmon"
+verify_static_elf "${RUNTIME_BIN_DIR}/netavark"
+verify_static_elf "${RUNTIME_BIN_DIR}/aardvark-dns"
+verify_static_elf "${RUNTIME_BIN_DIR}/catatonit"
+if [ -e "${RUNTIME_BIN_DIR}/rootlessport" ]; then
+  verify_static_elf "${RUNTIME_BIN_DIR}/rootlessport"
+fi
 verify_static_elf "${RUNTIME_BIN_DIR}/sarusctl"
 verify_static_elf "${RUNTIME_BIN_DIR}/ldcache_hook"
 verify_static_elf "${RUNTIME_BIN_DIR}/mps_hook"
@@ -43,8 +52,6 @@ verify_static_elf "${RUNTIME_BIN_DIR}/squashfuse_ll"
 verify_static_elf "${RUNTIME_BIN_DIR}/fuse-overlayfs"
 verify_static_elf "${RUNTIME_BIN_DIR}/fusermount3"
 verify_static_elf "${RUNTIME_BIN_DIR}/bwrap"
-verify_static_elf "${RUNTIME_BIN_DIR}/pasta"
-verify_static_elf "${RUNTIME_BIN_DIR}/crun"
 
 if [ "${HOST_OS}" = "Linux" ]; then
   [ -u "${RUNTIME_BIN_DIR}/fusermount3" ] || {
@@ -55,7 +62,6 @@ fi
 
 [ -x "${RUNTIME_BIN_DIR}/parallax" ]
 [ -x "${RUNTIME_BIN_DIR}/sarusctl" ]
-[ -x "${RUNTIME_BIN_DIR}/conmon" ]
 
 [ -x "${RUNTIME_BIN_DIR}/parallax-mount-program" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-check" ]
@@ -64,6 +70,8 @@ fi
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/registries.conf" ]
+[ -f "${RUNTIME_CONTAINERS_ETC_DIR}/policy.json" ]
+[ -f "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
 [ -f "${RUNTIME_CONTAINERS_MODULES_DIR}/hpc" ]
 [ -d "${RUNTIME_CONTAINERS_HOOKS_DIR}" ]
 [ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/10-ldcache.json" ]
@@ -78,3 +86,4 @@ fi
 [ -f "${BUNDLE_ROOT}/examples/debian.toml" ]
 [ -f "${RUNTIME_MANIFEST}" ]
 [ -f "${RUNTIME_LICENSE_DIR}/sarus-suite-LICENSE" ]
+"${ROOT_DIR}/scripts/verify-manifest.sh" "${RUNTIME_MANIFEST}"

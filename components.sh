@@ -27,6 +27,14 @@ require_cmd() {
 BUNDLE_NAME="${BUNDLE_NAME:-sarus-suite}"
 BUNDLE_VERSION="${BUNDLE_VERSION:-dev}"
 TARGET_ARCH="${TARGET_ARCH:-$(normalize_arch)}"
+case "${TARGET_ARCH}" in
+  amd64) RUST_MUSL_TARGET="x86_64-unknown-linux-musl" ;;
+  arm64) RUST_MUSL_TARGET="aarch64-unknown-linux-musl" ;;
+  *)
+    printf 'unsupported target architecture: %s\n' "${TARGET_ARCH}" >&2
+    exit 1
+    ;;
+esac
 
 WORK_DIR="${WORK_DIR:-${DIST_ROOT}/.work}"
 CACHE_DIR="${CACHE_DIR:-${DIST_ROOT}/.cache}"
@@ -67,9 +75,25 @@ PERFEXT_PC_INJECTION_HOOK_BIN="${PERFEXT_PC_INJECTION_HOOK_BIN:-${PERFEXT_BUILD_
 PERFEXT_MKHOMEDIR_BIN="${PERFEXT_MKHOMEDIR_BIN:-${PERFEXT_BUILD_DIR}/mkhomedir}"
 PERFEXT_SETHOMEVAR_BIN="${PERFEXT_SETHOMEVAR_BIN:-${PERFEXT_BUILD_DIR}/sethomevar}"
 
-PODMAN_MODE="${PODMAN_MODE:-download-static}"
-PODMAN_STATIC_VERSION="${PODMAN_STATIC_VERSION:-v5.8.1}"
-PODMAN_STATIC_PREFIX="${PODMAN_STATIC_PREFIX:-${CACHE_DIR}/podman-static/${PODMAN_STATIC_VERSION}/${TARGET_ARCH}}"
+PODMAN_BUILD_PREFIX="${PODMAN_BUILD_PREFIX:-${PODMAN_STATIC_PREFIX:-${BUILD_DIR}/podman-static-root}}"
+PODMAN_STATIC_PREFIX="${PODMAN_BUILD_PREFIX}"
+
+PODMAN_VERSION="${PODMAN_VERSION:-v5.8.4}"
+PODMAN_REPO="${PODMAN_REPO:-https://github.com/containers/podman.git}"
+PODMAN_BUILDTAGS="${PODMAN_BUILDTAGS:-seccomp selinux apparmor exclude_graphdriver_devicemapper containers_image_openpgp}"
+
+CONMON_VERSION="${CONMON_VERSION:-v2.2.1}"
+CONMON_REPO="${CONMON_REPO:-https://github.com/containers/conmon.git}"
+NETAVARK_VERSION="${NETAVARK_VERSION:-v1.17.2}"
+NETAVARK_REPO="${NETAVARK_REPO:-https://github.com/containers/netavark.git}"
+AARDVARK_DNS_VERSION="${AARDVARK_DNS_VERSION:-v1.17.1}"
+AARDVARK_DNS_REPO="${AARDVARK_DNS_REPO:-https://github.com/containers/aardvark-dns.git}"
+PASST_VERSION="${PASST_VERSION:-2026_06_11.a9c61ff}"
+PASST_REPO="${PASST_REPO:-https://passt.top/passt}"
+CRUN_VERSION="${CRUN_VERSION:-1.28}"
+CRUN_REPO="${CRUN_REPO:-https://github.com/containers/crun.git}"
+CATATONIT_VERSION="${CATATONIT_VERSION:-v0.2.1}"
+CATATONIT_REPO="${CATATONIT_REPO:-https://github.com/openSUSE/catatonit.git}"
 
 MKSQUASHFS_VERSION="${MKSQUASHFS_VERSION:-4.7.5}"
 RSYNC_VERSION="${RSYNC_VERSION:-3.4.1}"

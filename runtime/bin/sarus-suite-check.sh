@@ -144,8 +144,12 @@ main() {
   check_cmd_path pasta
   check_cmd_path netavark
   check_cmd_path aardvark-dns
-  check_cmd_path rootlessport
   check_cmd_path catatonit
+  if [ -x "${SARUS_SUITE_BIN}/rootlessport" ]; then
+    log "command rootlessport: ${SARUS_SUITE_BIN}/rootlessport"
+  else
+    log "command rootlessport: not bundled (optional)"
+  fi
   check_cmd_path mksquashfs
   check_cmd_path squashfuse_ll
   check_cmd_path fuse-overlayfs
