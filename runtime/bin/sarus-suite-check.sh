@@ -51,11 +51,17 @@ EOF
 }
 
 main() {
-  local install_mode containers_config_dir sarusctl_config_file script_path
+  local layout_file install_mode containers_config_dir sarusctl_config_file script_path
 
-  # The system package has a fixed layout. Shell mode continues to provide
-  # SARUS_SUITE_* through its environment, so no generated layout file is
-  # needed for either installation mode.
+  # The installer records its fixed layout in a sourced file. Keep the
+  # path-based fallback for RPM installations, which do not need a generated
+  # layout file.
+  layout_file="${SARUS_SUITE_LAYOUT_FILE:-/etc/sarus-suite/install-layout}"
+  if [ -z "${SARUS_SUITE_ROOT:-}" ] && [ -r "$layout_file" ]; then
+    # shellcheck disable=SC1090
+    source "$layout_file"
+  fi
+
   script_path=""
   if command -v readlink >/dev/null 2>&1; then
     script_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || true)"
@@ -69,12 +75,12 @@ main() {
     SARUS_SUITE_ETC=/etc
   fi
 
-  # we exit on error for missing settings
-  : "${SARUS_SUITE_ROOT:?run inside sarus-suite-shell or install the Sarus Suite system package}"
+  # Exit on error for missing settings.
+  : "${SARUS_SUITE_ROOT:?run inside sarus-suite-shell or install with sarus-suite-system-install}"
   : "${SARUS_SUITE_BIN:?missing SARUS_SUITE_BIN}"
   : "${SARUS_SUITE_HOOK_BIN:?missing SARUS_SUITE_HOOK_BIN}"
 
-  # setup if it is a system install/RPM vs shell via XDG
+  # Set up paths for a system install/RPM versus a portable shell bundle.
   install_mode="${SARUS_SUITE_INSTALL_MODE:-shell}"
   if [ "$install_mode" = "system" ]; then
     PATH="${SARUS_SUITE_BIN}:${PATH:-/usr/bin:/bin}"
