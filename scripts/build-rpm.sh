@@ -6,8 +6,9 @@ usage() {
 Usage:
   build-rpm.sh [OPTIONS]
 
-Assemble a fixed system payload and package it as an RPM. Additional payload
-options are forwarded to assemble-system-payload.sh after --.
+Assemble a fixed system payload and package it as an RPM. If rpmbuild is not
+available locally, the build runs automatically in the Alpine devcontainer.
+Additional payload options are forwarded to assemble-system-payload.sh after --.
 
 Options:
   --bundle-root DIR   Bundle to package (default: current build output)
@@ -28,9 +29,29 @@ die() {
   exit 1
 }
 
+if [ "$#" -eq 1 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then
+  usage
+  exit 0
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 # shellcheck source=../components.sh
 source "${ROOT_DIR}/components.sh"
+
+if [ "${SARUS_SUITE_RPM_IN_DEVCONTAINER:-0}" != 1 ] && ! command -v rpmbuild >/dev/null 2>&1; then
+  command -v devcontainer >/dev/null 2>&1 || die "missing required command: rpmbuild (and devcontainer is unavailable)"
+
+  printf '[build-rpm] rpmbuild not found; using the Alpine devcontainer\n' >&2
+  devcontainer up \
+    --workspace-folder "${ROOT_DIR}" \
+    --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
+
+  exec devcontainer exec \
+    --workspace-folder "${ROOT_DIR}" \
+    --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" \
+    env SARUS_SUITE_RPM_IN_DEVCONTAINER=1 \
+    bash -lc 'exec ./scripts/build-rpm.sh "$@"' -- "$@"
+fi
 
 BUNDLE_ROOT_ARG="${BUNDLE_ROOT}"
 VERSION="${BUNDLE_VERSION#v}"
