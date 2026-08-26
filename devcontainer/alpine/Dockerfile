@@ -20,8 +20,10 @@ RUN apk add --no-cache \
         curl \
         coreutils \
         file \
+        findutils \
         fuse3-dev \
         fuse3-static \
+        grep \
         git \
         glib-static \
         gpgme-dev \
@@ -51,6 +53,7 @@ RUN apk add --no-cache \
         protobuf-c-dev \
         protobuf-dev \
         python3 \
+        rpm \
         rsync \
         shellcheck \
         slirp4netns \
