@@ -239,7 +239,6 @@ esac
 [ -f "${BUNDLE_ROOT}/etc/parallax/parallax-mount.conf" ] || die "bundle parallax-mount.conf not found"
 [ -f "${BUNDLE_ROOT}/etc/sarus-suite/90-sarusctl.conf" ] || die "bundle sarusctl configuration not found"
 [ -f "${BUNDLE_ROOT}/etc/containers/policy.json" ] || die "bundle policy.json not found"
-[ -f "${BUNDLE_ROOT}/etc/containers/seccomp.json" ] || die "bundle seccomp.json not found"
 if [ -e "$OUTPUT_DIR" ] && [ -n "$(find "$OUTPUT_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
   die "output directory is not empty: ${OUTPUT_DIR}"
 fi
@@ -294,7 +293,9 @@ render_template "${BUNDLE_ROOT}/etc/parallax/parallax-mount.conf" "$(stage_path 
 render_template "${BUNDLE_ROOT}/etc/sarus-suite/90-sarusctl.conf" "$(stage_path /etc/sarus-suite/90-sarusctl.conf)"
 copy_file "${BUNDLE_ROOT}/etc/containers/registries.conf" /etc/containers/registries.conf 0644
 copy_file "${BUNDLE_ROOT}/etc/containers/policy.json" /etc/containers/policy.json 0644
-copy_file "${BUNDLE_ROOT}/etc/containers/seccomp.json" /etc/containers/seccomp.json 0644
+if [ -f "${BUNDLE_ROOT}/etc/containers/seccomp.json" ]; then
+  copy_file "${BUNDLE_ROOT}/etc/containers/seccomp.json" /etc/containers/seccomp.json 0644
+fi
 copy_file "${BUNDLE_ROOT}/etc/containers/containers.conf.modules/hpc" /etc/containers/containers.conf.modules/hpc 0644
 copy_tree "${BUNDLE_ROOT}/etc/containers/registries.d" /etc/containers/registries.d 0644
 copy_tree "${BUNDLE_ROOT}/etc/cdi" /etc/cdi 0644

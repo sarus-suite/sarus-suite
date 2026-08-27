@@ -92,7 +92,19 @@ if [ -d "${ROOT_DIR}/runtime/examples" ]; then
 fi
 
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/policy.json" "${RUNTIME_CONTAINERS_ETC_DIR}/policy.json"
-install -Dm0644 "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json"
+podman_linkage=static
+podman_linkage_metadata="${PODMAN_STATIC_PREFIX}/.build-metadata/podman.linkage"
+if [ -s "${podman_linkage_metadata}" ]; then
+  podman_linkage="$(sed -n '1p' "${podman_linkage_metadata}")"
+fi
+if [ "${podman_linkage}" = static ]; then
+  install -Dm0644 "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json"
+else
+  sed -i.bak '/^[[:space:]]*seccomp_profile[[:space:]]*=/d' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
+  rm -f "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf.bak"
+  sed -i.bak '/^[[:space:]]*seccomp_profile[[:space:]]*=/d' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
+  rm -f "${BUNDLE_ROOT}/etc/system/containers/containers.conf.bak"
+fi
 if [ -f "${PARALLAX_SRC_DIR}/LICENSE" ]; then
   install -Dm0644 "${PARALLAX_SRC_DIR}/LICENSE" "${RUNTIME_LICENSE_DIR}/parallax-LICENSE"
 fi
@@ -125,6 +137,26 @@ read_podman_build_metadata() {
   sed -n '1p' "${path}"
 }
 
+read_podman_build_metadata_default() {
+  local component="$1"
+  local field="$2"
+  local default_value="$3"
+  local path="${PODMAN_STATIC_PREFIX}/.build-metadata/${component}.${field}"
+  if [ -s "${path}" ]; then
+    sed -n '1p' "${path}"
+  else
+    printf '%s\n' "${default_value}"
+  fi
+}
+
+podman_linkage=$(read_podman_build_metadata_default podman linkage static)
+podman_glibc_baseline=$(read_podman_build_metadata_default podman glibc-baseline none)
+if [ "${podman_linkage}" = static ]; then
+  seccomp_sha256=$(read_podman_build_metadata seccomp sha256)
+else
+  seccomp_sha256=none
+fi
+
 cat > "${RUNTIME_MANIFEST}" <<MANIFEST
 bundle_name=${BUNDLE_NAME}
 bundle_version=${BUNDLE_VERSION}
@@ -144,6 +176,8 @@ podman_repo=$(read_podman_build_metadata podman repo)
 podman_ref=$(read_podman_build_metadata podman ref)
 podman_sha=$(read_podman_build_metadata podman sha)
 podman_version=${PODMAN_VERSION}
+podman_linkage=${podman_linkage}
+podman_glibc_baseline=${podman_glibc_baseline}
 conmon_repo=$(read_podman_build_metadata conmon repo)
 conmon_ref=$(read_podman_build_metadata conmon ref)
 conmon_sha=$(read_podman_build_metadata conmon sha)
@@ -169,7 +203,7 @@ catatonit_ref=$(read_podman_build_metadata catatonit ref)
 catatonit_sha=$(read_podman_build_metadata catatonit sha)
 catatonit_version=${CATATONIT_VERSION}
 containers_common_ref=$(read_podman_build_metadata containers-common ref)
-seccomp_sha256=$(read_podman_build_metadata seccomp sha256)
+seccomp_sha256=${seccomp_sha256}
 mksquashfs_version=${MKSQUASHFS_VERSION}
 rsync_version=${RSYNC_VERSION}
 inotify_tools_version=${INOTIFY_TOOLS_VERSION}
