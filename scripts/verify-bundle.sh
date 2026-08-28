@@ -110,8 +110,8 @@ fi
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/policy.json" ]
 podman_linkage="$(sed -n 's/^podman_linkage=//p' "${RUNTIME_MANIFEST}" 2>/dev/null || true)"
 if [ "${podman_linkage}" = glibc ]; then
-  ! grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*=' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
-  ! grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*=' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
+  grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
+  grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
   [ ! -e "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
 else
   [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]

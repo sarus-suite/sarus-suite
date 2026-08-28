@@ -100,9 +100,9 @@ fi
 if [ "${podman_linkage}" = static ]; then
   install -Dm0644 "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json"
 else
-  sed -i.bak '/^[[:space:]]*seccomp_profile[[:space:]]*=/d' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
+  sed -i.bak 's|^[[:space:]]*seccomp_profile[[:space:]]*=.*|seccomp_profile = "unconfined"|' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
   rm -f "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf.bak"
-  sed -i.bak '/^[[:space:]]*seccomp_profile[[:space:]]*=/d' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
+  sed -i.bak 's|^[[:space:]]*seccomp_profile[[:space:]]*=.*|seccomp_profile = "unconfined"|' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
   rm -f "${BUNDLE_ROOT}/etc/system/containers/containers.conf.bak"
 fi
 if [ -f "${PARALLAX_SRC_DIR}/LICENSE" ]; then
