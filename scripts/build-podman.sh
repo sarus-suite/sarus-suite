@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 # shellcheck source=../components.sh
 source "${ROOT_DIR}/components.sh"
 
-PODMAN_MODE="${PODMAN_MODE:-static}"
+PODMAN_MODE="${PODMAN_MODE:-glibc}"
 
 case "${PODMAN_MODE}" in
   static|glibc)

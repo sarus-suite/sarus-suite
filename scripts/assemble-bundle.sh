@@ -92,11 +92,16 @@ if [ -d "${ROOT_DIR}/runtime/examples" ]; then
 fi
 
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/policy.json" "${RUNTIME_CONTAINERS_ETC_DIR}/policy.json"
-podman_linkage=static
 podman_linkage_metadata="${PODMAN_STATIC_PREFIX}/.build-metadata/podman.linkage"
-if [ -s "${podman_linkage_metadata}" ]; then
-  podman_linkage="$(sed -n '1p' "${podman_linkage_metadata}")"
-fi
+[ -s "${podman_linkage_metadata}" ] || {
+  printf 'error: missing Podman linkage metadata: %s\n' "${podman_linkage_metadata}" >&2
+  exit 1
+}
+podman_linkage="$(sed -n '1p' "${podman_linkage_metadata}")"
+case "${podman_linkage}" in
+  static|glibc) ;;
+  *) printf 'error: invalid Podman linkage metadata: %s\n' "${podman_linkage}" >&2; exit 1 ;;
+esac
 if [ "${podman_linkage}" = static ]; then
   install -Dm0644 "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json"
 else
@@ -137,20 +142,8 @@ read_podman_build_metadata() {
   sed -n '1p' "${path}"
 }
 
-read_podman_build_metadata_default() {
-  local component="$1"
-  local field="$2"
-  local default_value="$3"
-  local path="${PODMAN_STATIC_PREFIX}/.build-metadata/${component}.${field}"
-  if [ -s "${path}" ]; then
-    sed -n '1p' "${path}"
-  else
-    printf '%s\n' "${default_value}"
-  fi
-}
-
-podman_linkage=$(read_podman_build_metadata_default podman linkage static)
-podman_glibc_baseline=$(read_podman_build_metadata_default podman glibc-baseline none)
+podman_linkage=$(read_podman_build_metadata podman linkage)
+podman_glibc_baseline=$(read_podman_build_metadata podman glibc-baseline)
 if [ "${podman_linkage}" = static ]; then
   seccomp_sha256=$(read_podman_build_metadata seccomp sha256)
 else

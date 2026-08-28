@@ -10,21 +10,39 @@ log() {
 }
 
 require_build_environment() {
+  local podman_mode="${PODMAN_MODE:-glibc}"
+
+  case "${podman_mode}" in
+    glibc|static) ;;
+    *)
+      printf 'error: unsupported PODMAN_MODE=%s (expected glibc or static)\n' "${podman_mode}" >&2
+      exit 2
+      ;;
+  esac
+
   if command -v devcontainer >/dev/null 2>&1; then
     return 0
   fi
 
-  if [ -f /etc/alpine-release ]; then
+  if [ "${podman_mode}" = static ] && [ -f /etc/alpine-release ]; then
     return 0
   fi
 
-  cat >&2 <<'EOF'
-error: bundle build requires either:
+  if [ "${podman_mode}" = glibc ]; then
+    cat >&2 <<'EOF'
+error: the default glibc Podman bundle build requires the devcontainer CLI
+with a working Docker or Podman backend.
+
+Use PODMAN_MODE=static only when building natively in the supported Alpine
+build environment.
+EOF
+  else
+    cat >&2 <<'EOF'
+error: the static Podman bundle build requires either:
   - devcontainer CLI with a working Docker or Podman backend, or
   - an Alpine build environment
-
-This is required by the parallax, helper-binary, and default source-component build steps.
 EOF
+  fi
   exit 1
 }
 

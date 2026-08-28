@@ -55,6 +55,7 @@ jobs:
         env:
           BUNDLE_VERSION: ${{ steps.meta.outputs.version }}
           TARGET_ARCH: ${{ matrix.arch }}
+          PODMAN_MODE: glibc
         run: |
           set -euxo pipefail
           mkdir -p .cache .work dist
@@ -74,9 +75,36 @@ jobs:
           path: ${{ steps.meta.outputs.tarball }}
           if-no-files-found: error
 
+  validate-static-podman:
+    name: Validate static Podman fallback
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Build static Podman and helpers
+        shell: bash
+        env:
+          PODMAN_MODE: static
+          TARGET_ARCH: amd64
+        run: |
+          set -euxo pipefail
+          ./scripts/build-podman.sh
+          test "$(cat .work/build/amd64/podman-static-root/.build-metadata/podman.linkage)" = static
+          test "$(cat .work/build/amd64/podman-static-root/.build-metadata/podman.glibc-baseline)" = none
+
   release:
     name: Publish GitHub release
-    needs: build
+    needs: [build, validate-static-podman]
     runs-on: ubuntu-24.04
 
     steps:

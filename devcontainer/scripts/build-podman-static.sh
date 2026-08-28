@@ -61,6 +61,8 @@ curl -fsSL "https://raw.githubusercontent.com/containers/common/${common_version
 build_require_cmd sha256sum
 build_record_provenance "${PREFIX_DIR}" podman "${PODMAN_REPO}" "${PODMAN_VERSION}" "${BUILD_CHECKOUT_SHA}"
 printf '%s\n' "${common_version}" > "${PREFIX_DIR}/.build-metadata/containers-common.ref"
+printf '%s\n' static > "${PREFIX_DIR}/.build-metadata/podman.linkage"
+printf '%s\n' none > "${PREFIX_DIR}/.build-metadata/podman.glibc-baseline"
 sha256sum "${PREFIX_DIR}/etc/containers/seccomp.json" | awk '{print $1}' \
   > "${PREFIX_DIR}/.build-metadata/seccomp.sha256"
 
