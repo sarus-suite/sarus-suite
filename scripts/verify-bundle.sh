@@ -34,7 +34,7 @@ verify_glibc_elf() {
   if ! command -v readelf >/dev/null 2>&1; then
     return 0
   fi
-  readelf -l "${path}" | grep -Eq 'Requesting program interpreter: /lib/ld-linux-(x86-64|aarch64)\.so\.[12]' || {
+  readelf -l "${path}" | grep -Eq 'Requesting program interpreter: /lib(64)?/ld-linux-(x86-64|aarch64)\.so\.[12]' || {
     printf 'error: Podman is not a glibc-linked ELF: %s\n' "${path}" >&2
     exit 1
   }
