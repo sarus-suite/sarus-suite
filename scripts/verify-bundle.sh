@@ -22,7 +22,43 @@ verify_static_elf() {
   fi
 }
 
-verify_static_elf "${RUNTIME_BIN_DIR}/podman"
+verify_glibc_elf() {
+  local path="$1"
+  local baseline="${2:-2.28}"
+  local needed
+
+  [ -x "${path}" ] || {
+    printf 'error: expected executable: %s\n' "${path}" >&2
+    exit 1
+  }
+  if ! command -v readelf >/dev/null 2>&1; then
+    return 0
+  fi
+  readelf -l "${path}" | grep -Eq 'Requesting program interpreter: /lib(64)?/ld-linux-(x86-64|aarch64)\.so\.[12]' || {
+    printf 'error: Podman is not a glibc-linked ELF: %s\n' "${path}" >&2
+    exit 1
+  }
+  needed="$(readelf -d "${path}" | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p')"
+  while IFS= read -r lib; do
+    case "${lib}" in
+      libc.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libm.so.6|libresolv.so.2|libutil.so.1) ;;
+      '') ;;
+      *) printf 'error: unsupported Podman shared dependency: %s\n' "${lib}" >&2; exit 1 ;;
+    esac
+  done <<< "${needed}"
+  max_glibc="$(readelf --version-info "${path}" | sed -n 's/.*Name: GLIBC_\([0-9][0-9.]*\).*/\1/p' | sort -V | tail -n 1)"
+  [ -z "${max_glibc}" ] || [ "$(printf '%s\n' "${max_glibc}" "${baseline}" | sort -V | tail -n 1)" = "${baseline}" ] || {
+    printf 'error: Podman requires glibc %s, baseline is %s\n' "${max_glibc}" "${baseline}" >&2
+    exit 1
+  }
+}
+
+podman_linkage="$(sed -n 's/^podman_linkage=//p' "${RUNTIME_MANIFEST}" 2>/dev/null || true)"
+if [ "${podman_linkage}" = glibc ]; then
+  verify_glibc_elf "${RUNTIME_BIN_DIR}/podman" "$(sed -n 's/^podman_glibc_baseline=//p' "${RUNTIME_MANIFEST}")"
+else
+  verify_static_elf "${RUNTIME_BIN_DIR}/podman"
+fi
 verify_static_elf "${RUNTIME_BIN_DIR}/crun"
 verify_static_elf "${RUNTIME_BIN_DIR}/pasta"
 verify_static_elf "${RUNTIME_BIN_DIR}/conmon"
@@ -72,7 +108,14 @@ fi
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/registries.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/policy.json" ]
-[ -f "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
+podman_linkage="$(sed -n 's/^podman_linkage=//p' "${RUNTIME_MANIFEST}" 2>/dev/null || true)"
+if [ "${podman_linkage}" = glibc ]; then
+  grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
+  grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
+  [ ! -e "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
+else
+  [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
+fi
 [ -f "${RUNTIME_CONTAINERS_MODULES_DIR}/hpc" ]
 [ -d "${RUNTIME_CONTAINERS_HOOKS_DIR}" ]
 [ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/10-ldcache.json" ]

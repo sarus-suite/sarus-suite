@@ -1,0 +1,16 @@
+{
+  "name": "Sarus Suite glibc 2.28 Podman",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "GO_VERSION": "1.25.0"
+    }
+  },
+  "remoteEnv": {
+    "CGO_ENABLED": "1",
+    "GOOS": "linux",
+    "GOFLAGS": "-buildvcs=false"
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+}

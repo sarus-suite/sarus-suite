@@ -63,6 +63,7 @@ if command -v devcontainer >/dev/null 2>&1; then
     log "host pwd before devcontainer up: $(pwd -P)"
     log "running devcontainer up"
     devcontainer up \
+      --remove-existing-container \
       --workspace-folder . \
       --config "${devcontainer_config_path}" >/dev/null
 

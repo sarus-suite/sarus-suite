@@ -3,6 +3,7 @@ ipcns = "host"
 netns = "host"
 pidns = "host"
 utsns = "host"
+userns = "keep-id"
 cgroupns = "host"
 cgroups = "no-conmon"
 

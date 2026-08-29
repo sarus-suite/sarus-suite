@@ -46,11 +46,35 @@ for component in "${components[@]}"; do
 done
 
 require_value containers_common_ref
-seccomp_sha256="$(manifest_value seccomp_sha256)"
-[[ "${seccomp_sha256}" =~ ^[0-9a-f]{64}$ ]] || {
-  printf 'error: manifest seccomp checksum is invalid: %s\n' "${seccomp_sha256}" >&2
+podman_linkage="$(manifest_value podman_linkage)"
+[[ "${podman_linkage}" =~ ^(static|glibc)$ ]] || {
+  printf 'error: invalid Podman linkage: %s\n' "${podman_linkage}" >&2
   exit 1
 }
+podman_glibc_baseline="$(manifest_value podman_glibc_baseline)"
+if [ "${podman_linkage}" = glibc ]; then
+  [[ "${podman_glibc_baseline}" =~ ^[0-9]+\.[0-9]+$ ]] || {
+    printf 'error: invalid Podman glibc baseline: %s\n' "${podman_glibc_baseline}" >&2
+    exit 1
+  }
+else
+  [ "${podman_glibc_baseline}" = none ] || {
+    printf 'error: static Podman must not declare a glibc baseline\n' >&2
+    exit 1
+  }
+fi
+seccomp_sha256="$(manifest_value seccomp_sha256)"
+if [ "${podman_linkage}" = glibc ]; then
+  [ "${seccomp_sha256}" = none ] || {
+    printf 'error: glibc Podman must not declare a seccomp checksum\n' >&2
+    exit 1
+  }
+else
+  [[ "${seccomp_sha256}" =~ ^[0-9a-f]{64}$ ]] || {
+    printf 'error: manifest seccomp checksum is invalid: %s\n' "${seccomp_sha256}" >&2
+    exit 1
+  }
+fi
 
 rootlessport_bundled="$(manifest_value rootlessport_bundled)"
 [[ "${rootlessport_bundled}" =~ ^(true|false)$ ]] || {
