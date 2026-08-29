@@ -75,6 +75,7 @@ case "${PERFEXT_BUILD_MODE}" in
       cd "${PERFEXT_SRC_DIR}"
       log "running devcontainer up"
       devcontainer up \
+        --remove-existing-container \
         --workspace-folder . \
         --config "${PERFEXT_SRC_DIR}/${PERFEXT_DEVCONTAINER_CONFIG}" >/dev/null
       log "running devcontainer exec"

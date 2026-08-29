@@ -28,6 +28,7 @@ if command -v devcontainer >/dev/null 2>&1; then
     # getcwd failures on rootless and network-filesystem-backed setups.
     cd /
     devcontainer up \
+      --remove-existing-container \
       --workspace-folder "${ROOT_DIR}" \
       --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
 

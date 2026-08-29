@@ -173,6 +173,7 @@ case "${SARUSCTL_BUILD_MODE}" in
     (
       cd "${SARUSCTL_SRC_DIR}"
       "${devcontainer_env[@]}" devcontainer up \
+        --remove-existing-container \
         --workspace-folder . \
         --config "${devcontainer_config_path}" >/dev/null
       cd /

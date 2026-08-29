@@ -43,6 +43,7 @@ if [ "${SARUS_SUITE_RPM_IN_DEVCONTAINER:-0}" != 1 ] && ! command -v rpmbuild >/d
 
   printf '[build-rpm] rpmbuild not found; using the Alpine devcontainer\n' >&2
   devcontainer up \
+    --remove-existing-container \
     --workspace-folder "${ROOT_DIR}" \
     --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
 

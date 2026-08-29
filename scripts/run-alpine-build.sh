@@ -17,6 +17,7 @@ if command -v devcontainer >/dev/null 2>&1; then
     # namespace and fail with: crun: getcwd: Operation not permitted.
     cd /
     devcontainer up \
+      --remove-existing-container \
       --workspace-folder "${ROOT_DIR}" \
       --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
 
