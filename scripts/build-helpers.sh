@@ -23,14 +23,20 @@ BUILD
 )
 
 if command -v devcontainer >/dev/null 2>&1; then
-  devcontainer up \
-    --workspace-folder "${ROOT_DIR}" \
-    --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
+  (
+    # Keep Podman/crun's host cwd off the bind-mounted workspace. This avoids
+    # getcwd failures on rootless and network-filesystem-backed setups.
+    cd /
+    devcontainer up \
+      --workspace-folder "${ROOT_DIR}" \
+      --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
 
-  devcontainer exec \
-    --workspace-folder "${ROOT_DIR}" \
-    --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" \
-    bash -lc "${build_cmd}"
+    workspace_name="$(basename "${ROOT_DIR}")"
+    devcontainer exec \
+      --workspace-folder "${ROOT_DIR}" \
+      --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" \
+      bash -lc "cd /workspaces/${workspace_name} && ${build_cmd}"
+  )
 elif [ -f /etc/alpine-release ]; then
   bash -lc "${build_cmd}"
 else
