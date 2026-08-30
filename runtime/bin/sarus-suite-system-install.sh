@@ -430,13 +430,7 @@ SYSTEM_TEMPLATE_DIR="${BUNDLE_ETC}/system"
 [ -d "$BUNDLE_HOOK_BIN" ] || die "bundle hook directory not found: ${BUNDLE_HOOK_BIN}"
 [ -f "${SYSTEM_TEMPLATE_DIR}/containers/containers.conf" ] || die "system templates not found in bundle"
 [ -f "${BUNDLE_ETC}/containers/policy.json" ] || die "bundle policy.json not found"
-PODMAN_LINKAGE=static
-if [ -f "${BUNDLE_ROOT}/share/manifest.txt" ]; then
-  PODMAN_LINKAGE="$(sed -n 's/^podman_linkage=//p' "${BUNDLE_ROOT}/share/manifest.txt")"
-fi
-if [ "${PODMAN_LINKAGE}" != glibc ] && [ ! -f "${BUNDLE_ETC}/containers/seccomp.json" ]; then
-  die "bundle seccomp.json not found"
-fi
+[ -f "${BUNDLE_ETC}/containers/seccomp.json" ] || die "bundle seccomp.json not found"
 
 declare -A IMPORTED_BINARIES=()
 declare -A IMPORTED_HOOKS=()
@@ -548,9 +542,7 @@ add_file "${WORK_DIR}/rendered/containers/containers.conf" /etc/containers/conta
 add_file "${WORK_DIR}/rendered/containers/storage.conf" /etc/containers/storage.conf 0644
 add_file "${BUNDLE_ETC}/containers/registries.conf" /etc/containers/registries.conf 0644
 add_file "${BUNDLE_ETC}/containers/policy.json" /etc/containers/policy.json 0644
-if [ "${PODMAN_LINKAGE}" != glibc ]; then
-  add_file "${BUNDLE_ETC}/containers/seccomp.json" /etc/containers/seccomp.json 0644
-fi
+add_file "${BUNDLE_ETC}/containers/seccomp.json" /etc/containers/seccomp.json 0644
 add_file "${BUNDLE_ETC}/containers/containers.conf.modules/hpc" /etc/containers/containers.conf.modules/hpc 0644
 add_tree "${WORK_DIR}/rendered/containers/oci/hooks.d" /etc/containers/oci/hooks.d 0644
 add_tree "${BUNDLE_ETC}/containers/registries.d" /etc/containers/registries.d 0644

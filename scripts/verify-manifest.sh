@@ -63,18 +63,22 @@ else
     exit 1
   }
 fi
+for feature in seccomp selinux apparmor; do
+  feature_state="$(manifest_value "podman_${feature}")"
+  [[ "${feature_state}" =~ ^(enabled|disabled)$ ]] || {
+    printf 'error: invalid Podman %s state: %s\n' "${feature}" "${feature_state}" >&2
+    exit 1
+  }
+done
+[ "$(manifest_value podman_seccomp)" = enabled ] || {
+  printf 'error: manifest must declare Podman seccomp support enabled\n' >&2
+  exit 1
+}
 seccomp_sha256="$(manifest_value seccomp_sha256)"
-if [ "${podman_linkage}" = glibc ]; then
-  [ "${seccomp_sha256}" = none ] || {
-    printf 'error: glibc Podman must not declare a seccomp checksum\n' >&2
-    exit 1
-  }
-else
-  [[ "${seccomp_sha256}" =~ ^[0-9a-f]{64}$ ]] || {
-    printf 'error: manifest seccomp checksum is invalid: %s\n' "${seccomp_sha256}" >&2
-    exit 1
-  }
-fi
+[[ "${seccomp_sha256}" =~ ^[0-9a-f]{64}$ ]] || {
+  printf 'error: manifest seccomp checksum is invalid: %s\n' "${seccomp_sha256}" >&2
+  exit 1
+}
 
 rootlessport_bundled="$(manifest_value rootlessport_bundled)"
 [[ "${rootlessport_bundled}" =~ ^(true|false)$ ]] || {

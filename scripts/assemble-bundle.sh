@@ -102,14 +102,17 @@ case "${podman_linkage}" in
   static|glibc) ;;
   *) printf 'error: invalid Podman linkage metadata: %s\n' "${podman_linkage}" >&2; exit 1 ;;
 esac
-if [ "${podman_linkage}" = static ]; then
-  install -Dm0644 "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json"
-else
-  sed -i.bak 's|^[[:space:]]*seccomp_profile[[:space:]]*=.*|seccomp_profile = "unconfined"|' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
-  rm -f "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf.bak"
-  sed -i.bak 's|^[[:space:]]*seccomp_profile[[:space:]]*=.*|seccomp_profile = "unconfined"|' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
-  rm -f "${BUNDLE_ROOT}/etc/system/containers/containers.conf.bak"
-fi
+podman_seccomp_metadata="${PODMAN_STATIC_PREFIX}/.build-metadata/podman.seccomp"
+[ -s "${podman_seccomp_metadata}" ] || {
+  printf 'error: missing Podman seccomp metadata: %s\n' "${podman_seccomp_metadata}" >&2
+  exit 1
+}
+podman_seccomp="$(sed -n '1p' "${podman_seccomp_metadata}")"
+[ "${podman_seccomp}" = enabled ] || {
+  printf 'error: Podman seccomp support is required\n' >&2
+  exit 1
+}
+install -Dm0644 "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json"
 if [ -f "${PARALLAX_SRC_DIR}/LICENSE" ]; then
   install -Dm0644 "${PARALLAX_SRC_DIR}/LICENSE" "${RUNTIME_LICENSE_DIR}/parallax-LICENSE"
 fi
@@ -144,11 +147,10 @@ read_podman_build_metadata() {
 
 podman_linkage=$(read_podman_build_metadata podman linkage)
 podman_glibc_baseline=$(read_podman_build_metadata podman glibc-baseline)
-if [ "${podman_linkage}" = static ]; then
-  seccomp_sha256=$(read_podman_build_metadata seccomp sha256)
-else
-  seccomp_sha256=none
-fi
+podman_seccomp=$(read_podman_build_metadata podman seccomp)
+podman_selinux=$(read_podman_build_metadata podman selinux)
+podman_apparmor=$(read_podman_build_metadata podman apparmor)
+seccomp_sha256=$(read_podman_build_metadata seccomp sha256)
 
 cat > "${RUNTIME_MANIFEST}" <<MANIFEST
 bundle_name=${BUNDLE_NAME}
@@ -171,6 +173,9 @@ podman_sha=$(read_podman_build_metadata podman sha)
 podman_version=${PODMAN_VERSION}
 podman_linkage=${podman_linkage}
 podman_glibc_baseline=${podman_glibc_baseline}
+podman_seccomp=${podman_seccomp}
+podman_selinux=${podman_selinux}
+podman_apparmor=${podman_apparmor}
 conmon_repo=$(read_podman_build_metadata conmon repo)
 conmon_ref=$(read_podman_build_metadata conmon ref)
 conmon_sha=$(read_podman_build_metadata conmon sha)

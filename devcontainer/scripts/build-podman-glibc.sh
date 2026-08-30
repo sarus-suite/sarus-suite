@@ -7,7 +7,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd -P)"
 # shellcheck source=../../components.sh
 . "${ROOT_DIR}/components.sh"
 
-GLIBC_BASELINE="${PODMAN_GLIBC_BASELINE:-2.28}"
+GLIBC_BASELINE="${PODMAN_GLIBC_BASELINE:-2.34}"
 
 build_require_native_target
 build_make_workdir
@@ -29,11 +29,22 @@ export CGO_ENABLED=1
 export GOOS=linux
 export GOARCH="${TARGET_ARCH}"
 export GOFLAGS="${GOFLAGS:--buildvcs=false -mod=vendor -trimpath}"
-export PKG_CONFIG_PATH="${PODMAN_PKG_CONFIG_PATH:-/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig}"
+export PKG_CONFIG_PATH="${PODMAN_PKG_CONFIG_PATH:-/usr/local/lib/pkgconfig:/usr/lib/$(gcc -print-multiarch)/pkgconfig}"
 
-# Keep this portability variant focused on glibc/NSS
-# seccomp and SELinux integrations are intentionally omitted from the build tags!!!
-podman_buildtags="${PODMAN_GLIBC_BUILDTAGS:-containers_image_openpgp btrfs_noversion exclude_graphdriver_btrfs}"
+# Stage an archive-only search path so cgo's ordinary -l flags resolve these
+# integrations statically while glibc and NSS remain dynamically linked.
+system_lib_dir="/usr/lib/$(gcc -print-multiarch)"
+static_lib_dir="${BUILD_WORKDIR}/podman-static-libs"
+mkdir -p "${static_lib_dir}"
+for archive in libapparmor.a libpcre2-8.a libseccomp.a libselinux.a libsepol.a; do
+  [ -f "${system_lib_dir}/${archive}" ] \
+    || build_die "required static archive not found: ${system_lib_dir}/${archive}"
+  cp "${system_lib_dir}/${archive}" "${static_lib_dir}/${archive}"
+done
+export CGO_LDFLAGS="-L${static_lib_dir}${CGO_LDFLAGS:+ ${CGO_LDFLAGS}}"
+
+podman_buildtags="${PODMAN_GLIBC_BUILDTAGS:-seccomp selinux apparmor exclude_graphdriver_devicemapper containers_image_openpgp btrfs_noversion exclude_graphdriver_btrfs}"
+build_require_tag seccomp "${podman_buildtags}"
 podman_extldflags="${PODMAN_GLIBC_EXTLDFLAGS:--static-libgcc}"
 extra_ldflags="${PODMAN_GLIBC_EXTRA_LDFLAGS:--s -w -linkmode=external -extldflags \"${podman_extldflags}\"}"
 
@@ -67,6 +78,14 @@ build_record_provenance "${PREFIX_DIR}" podman "${PODMAN_REPO}" "${PODMAN_VERSIO
 common_version="$(grep -Eom1 'github.com/containers/common [^ ]+' go.mod | sed 's!github.com/containers/common !!')"
 [ -n "${common_version}" ] || build_die "unable to determine containers/common version from Podman go.mod"
 printf '%s\n' "${common_version}" > "${PREFIX_DIR}/.build-metadata/containers-common.ref"
+build_record_tag_state "${PREFIX_DIR}" podman seccomp "${podman_buildtags}"
+build_record_tag_state "${PREFIX_DIR}" podman selinux "${podman_buildtags}"
+build_record_tag_state "${PREFIX_DIR}" podman apparmor "${podman_buildtags}"
+build_require_cmd sha256sum
+curl -fsSL "https://raw.githubusercontent.com/containers/common/${common_version}/pkg/seccomp/seccomp.json" \
+  -o "${PREFIX_DIR}/etc/containers/seccomp.json"
+sha256sum "${PREFIX_DIR}/etc/containers/seccomp.json" | awk '{print $1}' \
+  > "${PREFIX_DIR}/.build-metadata/seccomp.sha256"
 printf '%s\n' glibc > "${PREFIX_DIR}/.build-metadata/podman.linkage"
 printf '%s\n' "${GLIBC_BASELINE}" > "${PREFIX_DIR}/.build-metadata/podman.glibc-baseline"
 

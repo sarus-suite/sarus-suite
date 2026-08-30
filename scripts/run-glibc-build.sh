@@ -28,9 +28,9 @@ if command -v devcontainer >/dev/null 2>&1; then
       --config "${config_path}" \
       bash -lc "cd /workspaces/${workspace_name} && ${build_cmd}"
   )
-elif [ -f /etc/redhat-release ] && getconf GNU_LIBC_VERSION 2>/dev/null | grep -Fxq 'glibc 2.28'; then
+elif [ -f /etc/debian_version ] && getconf GNU_LIBC_VERSION 2>/dev/null | grep -Fxq 'glibc 2.36'; then
   bash -lc "cd '${ROOT_DIR}' && ${build_cmd}"
 else
-  printf '%s\n' 'error: need devcontainer CLI or a glibc 2.28 build environment' >&2
+  printf '%s\n' 'error: need devcontainer CLI or a Debian 12/glibc 2.36 build environment' >&2
   exit 1
 fi

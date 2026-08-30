@@ -1,10 +1,9 @@
-FROM rockylinux:8
+FROM debian:12-slim
 
 ARG GO_VERSION=1.25.0
 
-RUN dnf install -y dnf-plugins-core \
-    && dnf config-manager --set-enabled powertools \
-    && dnf install -y --setopt=install_weak_deps=False \
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         autoconf \
         automake \
         bash \
@@ -14,32 +13,34 @@ RUN dnf install -y dnf-plugins-core \
         diffutils \
         file \
         findutils \
-        fuse3-devel \
+        g++ \
         gcc \
-        gcc-c++ \
         git \
         gperf \
-        glibc-devel \
-        glibc-static \
-        gpgme-devel \
-        json-c-devel \
-        libassuan-devel \
-        libcap-devel \
+        libc6-dev \
+        libapparmor-dev \
+        libassuan-dev \
+        libcap-dev \
+        libfuse3-dev \
+        libgpgme-dev \
+        libjson-c-dev \
+        libostree-dev \
+        libpcre2-dev \
+        libprotobuf-c-dev \
+        libseccomp-dev \
+        libselinux1-dev \
+        libsepol-dev \
+        libssl-dev \
         libtool \
+        libzstd-dev \
         make \
-        openssl-devel \
-        ostree-devel \
-        pcre2-devel \
-        pkgconf-pkg-config \
-        protobuf-c-devel \
+        pkg-config \
         rpm \
         tar \
-        zlib-devel \
-        libzstd-devel \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.28'
+RUN test "$(getconf GNU_LIBC_VERSION)" = 'glibc 2.36'
 
 COPY scripts/install-go.sh /tmp/install-go.sh
 RUN chmod 0755 /tmp/install-go.sh \

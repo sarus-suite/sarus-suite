@@ -66,6 +66,30 @@ build_record_provenance() {
   printf '%s\n' "${sha}" > "${metadata_dir}/${component}.sha"
 }
 
+build_record_tag_state() {
+  prefix="$1"
+  component="$2"
+  feature="$3"
+  tags="$4"
+  metadata_dir="${prefix}/.build-metadata"
+
+  mkdir -p "${metadata_dir}"
+  case " ${tags} " in
+    *" ${feature} "*) printf '%s\n' enabled ;;
+    *) printf '%s\n' disabled ;;
+  esac > "${metadata_dir}/${component}.${feature}"
+}
+
+build_require_tag() {
+  required_tag="$1"
+  tags="$2"
+
+  case " ${tags} " in
+    *" ${required_tag} "*) ;;
+    *) build_die "required build tag is missing: ${required_tag}" ;;
+  esac
+}
+
 build_strip_binary() {
   binary="$1"
   build_require_cmd strip
@@ -104,7 +128,7 @@ build_verify_static_elf() {
 
 build_verify_glibc_elf() {
   binary="$1"
-  baseline="${2:-2.28}"
+  baseline="${2:-2.34}"
 
   [ -x "${binary}" ] || build_die "expected executable: ${binary}"
   build_require_cmd file
@@ -140,7 +164,7 @@ build_verify_glibc_elf() {
   # verify only glibc libraries are dynamically liked (everything else should be static)
   while IFS= read -r needed; do
     case "${needed}" in
-      libc.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libm.so.6|libresolv.so.2|libutil.so.1)
+      libc.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libm.so.6|libresolv.so.2|libutil.so.1|ld-linux-aarch64.so.1|ld-linux-x86-64.so.2)
         ;;
       '')
         ;;
