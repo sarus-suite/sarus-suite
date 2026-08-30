@@ -288,14 +288,15 @@ render_template "${SARUS_SUITE_ETC}/sarus-suite/90-sarusctl.conf" "${SARUSCTL_PR
 
 copy_if_present "${SARUS_SUITE_ETC}/containers/registries.conf" "${CONTAINERS_CONFIG_DIR}/registries.conf"
 copy_if_present "${SARUS_SUITE_ETC}/containers/policy.json" "${CONTAINERS_CONFIG_DIR}/policy.json"
-copy_if_present "${SARUS_SUITE_ETC}/containers/seccomp.json" "${CONTAINERS_CONFIG_DIR}/seccomp.json"
+[ -f "${SARUS_SUITE_ETC}/containers/seccomp.json" ] || die "missing required file: ${SARUS_SUITE_ETC}/containers/seccomp.json"
+install -Dm0644 "${SARUS_SUITE_ETC}/containers/seccomp.json" "${CONTAINERS_CONFIG_DIR}/seccomp.json"
 copy_if_present "${SARUS_SUITE_ETC}/containers/containers.conf.modules/hpc" "${CONTAINERS_MODULES_DIR}/hpc"
 copy_tree_if_present "${BUNDLE_CONTAINERS_REGISTRIES_D_DIR}" "${CONTAINERS_REGISTRIES_D_DIR}"
 render_dir_templates_if_present "${BUNDLE_CONTAINERS_HOOKS_DIR}" "${CONTAINERS_HOOKS_DIR}"
 
 # Some Podman code paths still consult ~/.config/containers directly for policy.json.
 copy_if_present "${CONTAINERS_CONFIG_DIR}/registries.conf" "${LEGACY_CONTAINERS_CONFIG_DIR}/registries.conf"
-copy_if_present "${CONTAINERS_CONFIG_DIR}/seccomp.json" "${LEGACY_CONTAINERS_CONFIG_DIR}/seccomp.json"
+install -Dm0644 "${CONTAINERS_CONFIG_DIR}/seccomp.json" "${LEGACY_CONTAINERS_CONFIG_DIR}/seccomp.json"
 copy_if_present "${CONTAINERS_MODULES_DIR}/hpc" "${LEGACY_CONTAINERS_MODULES_DIR}/hpc"
 copy_tree_if_present "${CONTAINERS_REGISTRIES_D_DIR}" "${LEGACY_CONTAINERS_REGISTRIES_D_DIR}"
 copy_if_present "${SARUSCTL_PRIVATE_CONFIG_DIR}/90-sarusctl.conf" "${LEGACY_SARUSCTL_CONFIG_DIR}/90-sarus-suite-bundle.conf"

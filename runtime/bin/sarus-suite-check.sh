@@ -119,17 +119,7 @@ main() {
   require_file "${containers_config_dir}/registries.conf"
   require_file "${containers_config_dir}/containers.conf.modules/hpc"
   require_file "${CONTAINERS_POLICY}"
-  podman_linkage="static"
-  manifest_file="${SARUS_SUITE_ROOT}/share/manifest.txt"
-  if [ -f "${manifest_file}" ]; then
-    podman_linkage="$(sed -n 's/^podman_linkage=//p' "${manifest_file}")"
-  fi
-  if [ "${podman_linkage}" != glibc ]; then
-    require_file "${containers_config_dir}/seccomp.json"
-  else
-    grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${containers_config_dir}/containers.conf" \
-      || die "glibc Podman requires seccomp_profile = \"unconfined\""
-  fi
+  require_file "${containers_config_dir}/seccomp.json"
   require_dir "${containers_config_dir}/oci/hooks.d"
   require_file "${containers_config_dir}/oci/hooks.d/10-ldcache.json"
   require_file "${containers_config_dir}/oci/hooks.d/20-mps.json"

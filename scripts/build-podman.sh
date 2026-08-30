@@ -74,9 +74,23 @@ for artifact in "${required_podman_artifacts[@]}"; do
   }
 done
 
-if [ "${PODMAN_MODE}" = static ]; then
-  [ -s "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" ] || {
-    printf 'error: missing required Podman seccomp profile: %s\n' "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" >&2
+for feature in seccomp selinux apparmor; do
+  feature_metadata="${PODMAN_STATIC_PREFIX}/.build-metadata/podman.${feature}"
+  [ -s "${feature_metadata}" ] || {
+    printf 'error: missing required Podman feature metadata: %s\n' "${feature_metadata}" >&2
     exit 1
   }
-fi
+  case "$(sed -n '1p' "${feature_metadata}")" in
+    enabled|disabled) ;;
+    *) printf 'error: invalid Podman feature metadata: %s\n' "${feature_metadata}" >&2; exit 1 ;;
+  esac
+done
+
+[ "$(sed -n '1p' "${PODMAN_STATIC_PREFIX}/.build-metadata/podman.seccomp")" = enabled ] || {
+  printf 'error: Podman was built without required seccomp support\n' >&2
+  exit 1
+}
+[ -s "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" ] || {
+  printf 'error: missing required Podman seccomp profile: %s\n' "${PODMAN_STATIC_PREFIX}/etc/containers/seccomp.json" >&2
+  exit 1
+}

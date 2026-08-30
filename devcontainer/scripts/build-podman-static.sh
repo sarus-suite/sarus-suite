@@ -26,6 +26,7 @@ export CGO_ENABLED=1
 export GOOS=linux
 export GOARCH="${TARGET_ARCH}"
 export GOFLAGS="${GOFLAGS:--buildvcs=false -mod=vendor -trimpath}"
+build_require_tag seccomp "${PODMAN_BUILDTAGS}"
 
 make bin/podman \
   BUILDTAGS="${PODMAN_BUILDTAGS}" \
@@ -55,14 +56,16 @@ fi
 
 common_version="$(grep -Eom1 'github.com/containers/common [^ ]+' go.mod | sed 's!github.com/containers/common !!')"
 [ -n "${common_version}" ] || build_die "unable to determine containers/common version from Podman go.mod"
-curl -fsSL "https://raw.githubusercontent.com/containers/common/${common_version}/pkg/seccomp/seccomp.json" \
-  -o "${PREFIX_DIR}/etc/containers/seccomp.json"
-
-build_require_cmd sha256sum
 build_record_provenance "${PREFIX_DIR}" podman "${PODMAN_REPO}" "${PODMAN_VERSION}" "${BUILD_CHECKOUT_SHA}"
 printf '%s\n' "${common_version}" > "${PREFIX_DIR}/.build-metadata/containers-common.ref"
 printf '%s\n' static > "${PREFIX_DIR}/.build-metadata/podman.linkage"
 printf '%s\n' none > "${PREFIX_DIR}/.build-metadata/podman.glibc-baseline"
+build_record_tag_state "${PREFIX_DIR}" podman seccomp "${PODMAN_BUILDTAGS}"
+build_record_tag_state "${PREFIX_DIR}" podman selinux "${PODMAN_BUILDTAGS}"
+build_record_tag_state "${PREFIX_DIR}" podman apparmor "${PODMAN_BUILDTAGS}"
+build_require_cmd sha256sum
+curl -fsSL "https://raw.githubusercontent.com/containers/common/${common_version}/pkg/seccomp/seccomp.json" \
+  -o "${PREFIX_DIR}/etc/containers/seccomp.json"
 sha256sum "${PREFIX_DIR}/etc/containers/seccomp.json" | awk '{print $1}' \
   > "${PREFIX_DIR}/.build-metadata/seccomp.sha256"
 

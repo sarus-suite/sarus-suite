@@ -6,6 +6,17 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "${ROOT_DIR}/components.sh"
 HOST_OS="$(uname -s)"
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | sed 's/[[:space:]].*$//'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | sed 's/[[:space:]].*$//'
+  else
+    printf 'error: sha256sum or shasum is required to verify the seccomp profile\n' >&2
+    exit 1
+  fi
+}
+
 verify_static_elf() {
   local path="$1"
 
@@ -24,7 +35,7 @@ verify_static_elf() {
 
 verify_glibc_elf() {
   local path="$1"
-  local baseline="${2:-2.28}"
+  local baseline="${2:-2.34}"
   local needed
 
   [ -x "${path}" ] || {
@@ -41,7 +52,7 @@ verify_glibc_elf() {
   needed="$(readelf -d "${path}" | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p')"
   while IFS= read -r lib; do
     case "${lib}" in
-      libc.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libm.so.6|libresolv.so.2|libutil.so.1) ;;
+      libc.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libm.so.6|libresolv.so.2|libutil.so.1|ld-linux-aarch64.so.1|ld-linux-x86-64.so.2) ;;
       '') ;;
       *) printf 'error: unsupported Podman shared dependency: %s\n' "${lib}" >&2; exit 1 ;;
     esac
@@ -108,14 +119,13 @@ fi
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/registries.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/policy.json" ]
-podman_linkage="$(sed -n 's/^podman_linkage=//p' "${RUNTIME_MANIFEST}" 2>/dev/null || true)"
-if [ "${podman_linkage}" = glibc ]; then
-  grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
-  grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *"unconfined"' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
-  [ ! -e "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
-else
-  [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
-fi
+[ -f "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json" ]
+[ "$(sha256_file "${RUNTIME_CONTAINERS_ETC_DIR}/seccomp.json")" = "$(sed -n 's/^seccomp_sha256=//p' "${RUNTIME_MANIFEST}")" ] || {
+  printf 'error: bundled seccomp profile checksum does not match the manifest\n' >&2
+  exit 1
+}
+grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *".*seccomp\.json"' "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
+grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *".*seccomp\.json"' "${BUNDLE_ROOT}/etc/system/containers/containers.conf"
 [ -f "${RUNTIME_CONTAINERS_MODULES_DIR}/hpc" ]
 [ -d "${RUNTIME_CONTAINERS_HOOKS_DIR}" ]
 [ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/10-ldcache.json" ]

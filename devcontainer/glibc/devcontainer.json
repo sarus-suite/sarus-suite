@@ -1,5 +1,5 @@
 {
-  "name": "Sarus Suite glibc 2.28 Podman",
+  "name": "Sarus Suite glibc 2.34 Podman",
   "build": {
     "dockerfile": "Dockerfile",
     "context": "..",
