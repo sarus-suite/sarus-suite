@@ -8,7 +8,7 @@ Usage:
 
 Assemble a fixed system payload and package it as an RPM. If rpmbuild is not
 available locally, the build runs automatically in the Alpine devcontainer.
-Additional payload options are forwarded to assemble-system-payload.sh after --.
+Additional payload options are forwarded to install.sh stage after --.
 
 Options:
   --bundle-root DIR   Bundle to package (default: current build output)
@@ -101,7 +101,7 @@ TOP_DIR="${PACKAGE_WORK_DIR}/rpmbuild"
 PAYLOAD_DIR="${PACKAGE_WORK_DIR}/payload"
 install -d "${TOP_DIR}/BUILD" "${TOP_DIR}/BUILDROOT" "${TOP_DIR}/RPMS" "${TOP_DIR}/SOURCES" "${TOP_DIR}/SPECS" "${TOP_DIR}/SRPMS"
 
-"${ROOT_DIR}/scripts/assemble-system-payload.sh" \
+"${ROOT_DIR}/scripts/install.sh" stage \
   --bundle-root "$(cd "$BUNDLE_ROOT_ARG" && pwd -P)" \
   --output-dir "$PAYLOAD_DIR" \
   "${PAYLOAD_ARGS[@]}"
