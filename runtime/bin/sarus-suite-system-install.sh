@@ -12,10 +12,6 @@ destination collisions and prints a complete change report when it finishes.
 
 Options:
   --bundle-root DIR       Bundle to install (default: parent of this script)
-  --prefix DIR            Installation prefix (default: /usr/local)
-  --bin-dir DIR           Command directory (default: PREFIX/bin)
-  --libexec-dir DIR       OCI hook directory
-                          (default: PREFIX/libexec/sarus-suite/oci/hooks)
   --state-dir DIR         Use DIR/parallax/ro-store as a legacy shared store
                           unless --parallax-store is also supplied
   --parallax-store PATH   Parallax image store. The default is per-user:
@@ -31,9 +27,11 @@ Options:
   --dry-run               Validate and report without changing the system
   -h, --help              Show this help
 
-System configuration is installed below /etc. A profile fragment adds BIN_DIR
-to PATH for future login shells; the runtime itself uses native system config
-locations and does not require sarus-suite-shell.
+Commands are installed below /opt/sarus-suite/bin and OCI hooks below
+/opt/sarus-suite/libexec/oci/hooks. System configuration is installed below
+/etc. A profile fragment adds the command directory to PATH for future login
+shells; the runtime itself uses native system config locations and does not
+require sarus-suite-shell.
 USAGE
 }
 
@@ -281,9 +279,9 @@ install_file() {
 }
 
 BUNDLE_ROOT_OVERRIDE=""
-PREFIX="/usr/local"
-BIN_DIR_OVERRIDE=""
-LIBEXEC_DIR_OVERRIDE=""
+PREFIX="/opt/sarus-suite"
+BIN_DIR="${PREFIX}/bin"
+LIBEXEC_DIR="${PREFIX}/libexec/oci/hooks"
 STATE_DIR="/var/lib/sarus-suite"
 STATE_DIR_SET=0
 PARALLAX_STORE='${HOME}/.sarus-suite/ro-store'
@@ -300,21 +298,6 @@ while [ $# -gt 0 ]; do
     --bundle-root)
       [ $# -ge 2 ] || die "--bundle-root requires a directory"
       BUNDLE_ROOT_OVERRIDE="$2"
-      shift 2
-      ;;
-    --prefix)
-      [ $# -ge 2 ] || die "--prefix requires a directory"
-      PREFIX="$2"
-      shift 2
-      ;;
-    --bin-dir)
-      [ $# -ge 2 ] || die "--bin-dir requires a directory"
-      BIN_DIR_OVERRIDE="$2"
-      shift 2
-      ;;
-    --libexec-dir)
-      [ $# -ge 2 ] || die "--libexec-dir requires a directory"
-      LIBEXEC_DIR_OVERRIDE="$2"
       shift 2
       ;;
     --state-dir)
@@ -385,16 +368,6 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 BUNDLE_ROOT="$(strip_trailing_slash "${BUNDLE_ROOT_OVERRIDE:-$(cd "${SCRIPT_DIR}/.." && pwd -P)}")"
-PREFIX="$(strip_trailing_slash "$PREFIX")"
-if [ "$PREFIX" = "/" ]; then
-  DEFAULT_BIN_DIR="/bin"
-  DEFAULT_LIBEXEC_DIR="/libexec/sarus-suite/oci/hooks"
-else
-  DEFAULT_BIN_DIR="${PREFIX}/bin"
-  DEFAULT_LIBEXEC_DIR="${PREFIX}/libexec/sarus-suite/oci/hooks"
-fi
-BIN_DIR="$(strip_trailing_slash "${BIN_DIR_OVERRIDE:-${DEFAULT_BIN_DIR}}")"
-LIBEXEC_DIR="$(strip_trailing_slash "${LIBEXEC_DIR_OVERRIDE:-${DEFAULT_LIBEXEC_DIR}}")"
 STATE_DIR="$(strip_trailing_slash "$STATE_DIR")"
 if [ "$STATE_DIR_SET" -eq 1 ] && [ "$PARALLAX_STORE_SET" -eq 0 ]; then
   PARALLAX_STORE="${STATE_DIR}/parallax/ro-store"
@@ -407,17 +380,12 @@ if [ -n "$INSTALL_ROOT" ]; then
 fi
 
 require_absolute_path --bundle-root "$BUNDLE_ROOT"
-require_absolute_path --prefix "$PREFIX"
-require_absolute_path --bin-dir "$BIN_DIR"
-require_absolute_path --libexec-dir "$LIBEXEC_DIR"
 require_absolute_path --state-dir "$STATE_DIR"
 if ! is_per_user_store_path "$PARALLAX_STORE"; then
   require_absolute_path --parallax-store "$PARALLAX_STORE"
 fi
 require_absolute_path --report "$REPORT_FILE"
 [ -z "$INSTALL_ROOT" ] || require_absolute_path --install-root "$INSTALL_ROOT"
-[ "$BIN_DIR" != "/" ] || die "--bin-dir cannot be the filesystem root"
-[ "$LIBEXEC_DIR" != "/" ] || die "--libexec-dir cannot be the filesystem root"
 [ "$STATE_DIR" != "/" ] || die "--state-dir cannot be the filesystem root"
 [ "$PARALLAX_STORE" != "/" ] || die "--parallax-store cannot be the filesystem root"
 [ "$REPORT_FILE" != "/" ] || die "--report cannot be the filesystem root"
@@ -490,22 +458,6 @@ esac
 unset _sarus_suite_bin
 PROFILE
 
-quoted_prefix="$(shell_quote "$PREFIX")"
-quoted_bin_dir="$(shell_quote "$BIN_DIR")"
-quoted_libexec_dir="$(shell_quote "$LIBEXEC_DIR")"
-quoted_state_dir="$(shell_quote "$STATE_DIR")"
-quoted_store="$(shell_quote "$PARALLAX_STORE")"
-cat > "${WORK_DIR}/install-layout" <<LAYOUT
-# Installed by sarus-suite-system-install; sourced by sarus-suite-check.
-SARUS_SUITE_INSTALL_MODE=system
-SARUS_SUITE_ROOT=${quoted_prefix}
-SARUS_SUITE_BIN=${quoted_bin_dir}
-SARUS_SUITE_HOOK_BIN=${quoted_libexec_dir}
-SARUS_SUITE_ETC=/etc
-SARUS_SUITE_STATE=${quoted_state_dir}
-SARUS_SUITE_PARALLAX_STORE=${quoted_store}
-LAYOUT
-
 SOURCES=()
 DESTINATIONS=()
 MODES=()
@@ -549,7 +501,6 @@ add_tree "${BUNDLE_ETC}/containers/registries.d" /etc/containers/registries.d 06
 add_tree "${BUNDLE_ETC}/cdi" /etc/cdi 0644
 add_file "${WORK_DIR}/rendered/parallax-mount.conf" /etc/parallax-mount.conf 0644
 add_file "${WORK_DIR}/rendered/sarus-suite/90-sarusctl.conf" /etc/sarus-suite/90-sarusctl.conf 0644
-add_file "${WORK_DIR}/install-layout" /etc/sarus-suite/install-layout 0644
 add_file "${WORK_DIR}/profile.sh" /etc/profile.d/sarus-suite.sh 0644
 add_tree "${BUNDLE_ROOT}/examples" "${PREFIX}/share/sarus-suite/examples" 0644
 add_tree "${BUNDLE_ROOT}/share" "${PREFIX}/share/sarus-suite" 0644

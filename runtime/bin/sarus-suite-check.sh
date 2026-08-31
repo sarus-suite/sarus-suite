@@ -51,22 +51,13 @@ EOF
 }
 
 main() {
-  local layout_file install_mode containers_config_dir sarusctl_config_file script_path
-
-  # The installer records its fixed layout in a sourced file. Keep the
-  # path-based fallback for RPM installations, which do not need a generated
-  # layout file.
-  layout_file="${SARUS_SUITE_LAYOUT_FILE:-/etc/sarus-suite/install-layout}"
-  if [ -z "${SARUS_SUITE_ROOT:-}" ] && [ -r "$layout_file" ]; then
-    # shellcheck disable=SC1090
-    source "$layout_file"
-  fi
+  local install_mode containers_config_dir sarusctl_config_file script_path
 
   script_path=""
   if command -v readlink >/dev/null 2>&1; then
     script_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || true)"
   fi
-  # In case this is an RPM install, we need to set the SARUS_SUITE_* env vars as needed by the shell
+  # Both package and copy installation use this fixed system layout.
   if [ -z "${SARUS_SUITE_ROOT:-}" ] && [ "$script_path" = /opt/sarus-suite/bin/sarus-suite-check ]; then
     SARUS_SUITE_INSTALL_MODE=system
     SARUS_SUITE_ROOT=/opt/sarus-suite
