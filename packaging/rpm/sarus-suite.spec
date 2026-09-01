@@ -6,6 +6,12 @@ License:        BSD-3-Clause AND LicenseRef-Sarus-Suite-Bundled-Components
 URL:            https://github.com/sarus-suite/sarus-suite
 Source0:        sarus-suite-system-payload.tar.gz
 
+# Sarus Suite deliberately bundles its runtime binaries. Automatic ELF and
+# shebang dependency generation would make a portable RPM require providers
+# from the build host's RPM ecosystem, which is unavailable on Debian hosts
+# used for bundle validation.
+AutoReqProv:     no
+
 %description
 Sarus Suite packages static container runtime, image management, filesystem,
 and OCI hook components for a system-wide installation. Per-user runtime and
