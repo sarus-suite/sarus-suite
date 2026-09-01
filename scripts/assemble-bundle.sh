@@ -62,7 +62,8 @@ install_bin "${FUSERMOUNT3_BIN}" fusermount3 4755
 install_bin "${BWRAP_BIN}" bwrap
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-shell.sh" sarus-suite-shell
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-system-install.sh" sarus-suite-system-install
-install -Dm0755 "${ROOT_DIR}/scripts/install.sh" "${RUNTIME_LIBEXEC_DIR}/sarus-suite/install.sh"
+install -d -m0755 "${RUNTIME_LIBEXEC_DIR}/sarus-suite"
+install -m0755 "${ROOT_DIR}/scripts/install.sh" "${RUNTIME_LIBEXEC_DIR}/sarus-suite/install.sh"
 
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/containers.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf"
 install -Dm0644 "${ROOT_DIR}/runtime/etc/containers/storage.conf" "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf"
