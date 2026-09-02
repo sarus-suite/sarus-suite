@@ -114,6 +114,7 @@ fi
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-check" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-shell" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-system-install" ]
+[ -x "${RUNTIME_LIBEXEC_DIR}/sarus-suite/install.sh" ]
 [ -d "${RUNTIME_HOOK_BIN_DIR}" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/containers.conf" ]
 [ -f "${RUNTIME_CONTAINERS_ETC_DIR}/storage.conf" ]

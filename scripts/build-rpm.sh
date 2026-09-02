@@ -8,7 +8,7 @@ Usage:
 
 Assemble a fixed system payload and package it as an RPM. If rpmbuild is not
 available locally, the build runs automatically in the Alpine devcontainer.
-Additional payload options are forwarded to assemble-system-payload.sh after --.
+Additional payload options are forwarded to install.sh stage after --.
 
 Options:
   --bundle-root DIR   Bundle to package (default: current build output)
@@ -37,21 +37,104 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 # shellcheck source=../components.sh
 source "${ROOT_DIR}/components.sh"
+# shellcheck source=vendor/clack-bash/clack-build-ui.sh
+source "${ROOT_DIR}/scripts/vendor/clack-bash/clack-build-ui.sh"
+
+BUILD_LOG_TAIL="${BUILD_LOG_TAIL:-100}"
+BUILD_UI_ENABLED=0
+BUILD_LOG_DIR="${BUILD_LOG_DIR:-}"
+BUILD_STAGE=""
+BUILD_STAGE_INDEX=0
+
+build_ui_enabled() {
+  [ -t 2 ] && [ "${CI:-}" != 1 ] && [ "${VERBOSE:-0}" != 1 ] && [ -z "${NO_COLOR:-}" ]
+}
+
+stage_log_name() {
+  printf '%s' "$1" | tr '[:upper:] ' '[:lower:]-' | tr -cd '[:alnum:]._-'
+}
+
+show_stage_failure() {
+  local status="$1"
+  local log_file="$2"
+
+  printf '[build-rpm] %s failed (exit %s)\n' "${BUILD_STAGE}" "${status}" >&2
+  printf '[build-rpm] last %s lines: %s\n' "${BUILD_LOG_TAIL}" "${log_file}" >&2
+  tail -n "${BUILD_LOG_TAIL}" "${log_file}" >&2 || true
+  printf '[build-rpm] full log: %s\n' "${log_file}" >&2
+}
+
+run_stage() {
+  local label="$1"
+  local log_file status slug
+  shift
+
+  BUILD_STAGE="${label}"
+  BUILD_STAGE_INDEX=$((BUILD_STAGE_INDEX + 1))
+  slug="$(stage_log_name "${label}")"
+  log_file="${BUILD_LOG_DIR}/$(printf '%02d' "${BUILD_STAGE_INDEX}")-${slug}.log"
+
+  if [ "${BUILD_UI_ENABLED}" -eq 1 ]; then
+    clack_spinner_start "${label}" timer
+    if "$@" >"${log_file}" 2>&1; then
+      clack_spinner_stop "${label}"
+      return 0
+    else
+      status=$?
+      clack_spinner_error "${label} failed"
+      show_stage_failure "${status}" "${log_file}"
+      return "${status}"
+    fi
+  fi
+
+  printf '[build-rpm] running %s (log: %s)\n' "${label}" "${log_file}"
+  if "$@" 2>&1 | tee "${log_file}"; then
+    status="${PIPESTATUS[0]}"
+  else
+    status="${PIPESTATUS[0]}"
+  fi
+  if [ "${status}" -eq 0 ]; then
+    return 0
+  fi
+  show_stage_failure "${status}" "${log_file}"
+  return "${status}"
+}
+
+on_interrupt() {
+  if [ "${BUILD_UI_ENABLED}" -eq 1 ] && [ -n "${BUILD_STAGE}" ]; then
+    clack_spinner_cancel "${BUILD_STAGE} cancelled"
+  fi
+  printf '[build-rpm] interrupted; logs: %s\n' "${BUILD_LOG_DIR:-unavailable}" >&2
+  exit 130
+}
+
+mkdir -p "${WORK_DIR}/logs"
+if [ -n "${BUILD_LOG_DIR}" ]; then
+  mkdir -p "${BUILD_LOG_DIR}"
+else
+  BUILD_LOG_DIR="$(mktemp -d "${WORK_DIR}/logs/build-rpm.XXXXXX")"
+fi
+if build_ui_enabled; then
+  BUILD_UI_ENABLED=1
+  printf 'Sarus Suite RPM build\n' >&2
+fi
+trap on_interrupt INT TERM
 
 if [ "${SARUS_SUITE_RPM_IN_DEVCONTAINER:-0}" != 1 ] && ! command -v rpmbuild >/dev/null 2>&1; then
   command -v devcontainer >/dev/null 2>&1 || die "missing required command: rpmbuild (and devcontainer is unavailable)"
 
-  printf '[build-rpm] rpmbuild not found; using the Alpine devcontainer\n' >&2
-  devcontainer up \
+  run_stage 'Starting Alpine devcontainer' devcontainer up \
     --remove-existing-container \
     --workspace-folder "${ROOT_DIR}" \
-    --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
+    --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json"
 
-  exec devcontainer exec \
+  run_stage 'Building RPM in Alpine devcontainer' devcontainer exec \
     --workspace-folder "${ROOT_DIR}" \
     --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" \
     env SARUS_SUITE_RPM_IN_DEVCONTAINER=1 \
     bash -lc 'exec ./scripts/build-rpm.sh "$@"' -- "$@"
+  printf 'Build logs: %s\n' "${BUILD_LOG_DIR}"
+  exit 0
 fi
 
 BUNDLE_ROOT_ARG="${BUNDLE_ROOT}"
@@ -96,19 +179,19 @@ case "$TARGET_ARCH" in
 esac
 
 PACKAGE_WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sarus-suite-rpm.XXXXXX")"
-trap 'rm -rf "${PACKAGE_WORK_DIR}"' EXIT INT TERM
+trap 'rm -rf "${PACKAGE_WORK_DIR}"' EXIT
 TOP_DIR="${PACKAGE_WORK_DIR}/rpmbuild"
 PAYLOAD_DIR="${PACKAGE_WORK_DIR}/payload"
 install -d "${TOP_DIR}/BUILD" "${TOP_DIR}/BUILDROOT" "${TOP_DIR}/RPMS" "${TOP_DIR}/SOURCES" "${TOP_DIR}/SPECS" "${TOP_DIR}/SRPMS"
 
-"${ROOT_DIR}/scripts/assemble-system-payload.sh" \
+run_stage 'Staging system payload' "${ROOT_DIR}/scripts/install.sh" stage \
   --bundle-root "$(cd "$BUNDLE_ROOT_ARG" && pwd -P)" \
   --output-dir "$PAYLOAD_DIR" \
   "${PAYLOAD_ARGS[@]}"
 
-COPYFILE_DISABLE=1 tar -C "$PAYLOAD_DIR" -czf "${TOP_DIR}/SOURCES/sarus-suite-system-payload.tar.gz" .
+run_stage 'Creating RPM source archive' env COPYFILE_DISABLE=1 tar -C "$PAYLOAD_DIR" -czf "${TOP_DIR}/SOURCES/sarus-suite-system-payload.tar.gz" .
 install -m 0644 "${ROOT_DIR}/packaging/rpm/sarus-suite.spec" "${TOP_DIR}/SPECS/sarus-suite.spec"
-rpmbuild -bb \
+run_stage 'Building RPM' rpmbuild -bb \
   --target "$RPM_ARCH" \
   --define "_topdir ${TOP_DIR}" \
   --define "sarus_suite_version ${VERSION}" \
@@ -120,3 +203,4 @@ while IFS= read -r rpm; do
   install -m 0644 "$rpm" "$RPM_OUTPUT_DIR/"
   printf 'RPM ready at %s/%s\n' "$RPM_OUTPUT_DIR" "$(basename "$rpm")"
 done < <(find "${TOP_DIR}/RPMS" -type f -name '*.rpm' -print | sort)
+printf 'Build logs: %s\n' "${BUILD_LOG_DIR}"

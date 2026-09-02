@@ -1,0 +1,9 @@
+Clack for Bash spinner subset
+
+Upstream: https://github.com/ibrahimhajjaj/clack-bash
+Pinned commit: afe36b88ab574b14a7bbc05ed1707fb4d9849ee5
+Upstream version banner: v1.1.0
+
+This directory contains the small spinner-only subset needed by the build
+scripts.  It retains the upstream public spinner function names so it can be
+replaced with the complete clack.sh later without changing callers.
