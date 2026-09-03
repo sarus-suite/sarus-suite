@@ -50,8 +50,18 @@ EOF
   log "podman network backend: ${network_backend}"
 }
 
+report_validation_result() {
+  local status="$?"
+
+  if [ "$status" -ne 0 ]; then
+    printf '[sarus-suite-check] validation failed (exit %s)\n' "$status" >&2
+  fi
+}
+
 main() {
   local install_mode containers_config_dir sarusctl_config_file script_path
+
+  trap report_validation_result EXIT
 
   script_path=""
   if command -v readlink >/dev/null 2>&1; then
@@ -161,7 +171,7 @@ main() {
   log "parallax help: OK"
   sarusctl images >/dev/null
   log "sarusctl images: OK"
-  log "check passed"
+  log "validation succeeded"
 }
 
 main "$@"
