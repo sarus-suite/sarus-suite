@@ -1,31 +1,41 @@
 # Sarus Suite
 
-Sarus Suite is a self-contained bundle for running Sarus containers on Linux.
-It includes `sarusctl`, Podman, Parallax, filesystem and FUSE helpers, OCI
-hooks, configuration, and diagnostic tools in one directory.
+Run Sarus containers from one portable Linux bundle.
 
-## Quick start
+Download it, unpack it, and try a real container in under a minute—without a
+package manager or system-wide installation.
 
-Download the bundle for your host architecture (`amd64` or `arm64`) from the
-[GitHub releases](https://github.com/sarus-suite/sarus-suite/releases):
+## Try it now
+
+First, [prepare the Linux host](#runtime-requirements) and make sure the
+rootless-container requirements are enabled.
+
+Pick the archive for your host (`amd64` or `arm64`), then run the included
+Ubuntu example:
 
 ```sh
 VERSION=v26.8.3
-ARCH=amd64
+ARCH=amd64 # use arm64 on ARM hosts
 
 curl -LO "https://github.com/sarus-suite/sarus-suite/releases/download/${VERSION}/sarus-suite-${VERSION}-${ARCH}.tar.gz"
 tar -xzf "sarus-suite-${VERSION}-${ARCH}.tar.gz"
 cd sarus-suite
+./bin/sarus-suite-shell -- sarusctl run examples/ubuntu.toml cat /etc/os-release
 ```
 
-Run commands inside the self-contained environment:
+That’s the test drive: one directory, one command, and the container’s output.
+
+![Sarus Suite demo](docs/sarus-suite-demo.gif)
+
+## After your first run
+
+Try the second included distribution with the same command:
 
 ```sh
-./bin/sarus-suite-shell -- bash -lc \
-  'sarusctl run examples/ubuntu.toml cat /etc/os-release'
+./bin/sarus-suite-shell -- sarusctl run examples/debian.toml cat /etc/os-release
 ```
 
-To open an interactive shell instead:
+Or open an interactive shell:
 
 ```sh
 ./bin/sarus-suite-shell
@@ -99,13 +109,67 @@ stream full output. RPM packaging is available with:
 
 ## Runtime requirements
 
-The target Linux host needs:
+The bundle includes Podman, Sarus, Parallax, and the FUSE helpers. The target
+Linux host only needs the rootless-container plumbing below, including the
+FUSE 3 host support.
 
-- unprivileged user namespaces;
-- FUSE support;
-- rootless container setup, including `/etc/subuid` and `/etc/subgid`; and
-- `uidmap`, `newuidmap`, and `newgidmap` support.
+### Install on Ubuntu or Debian
 
-AppArmor may also need to be configured to allow user namespaces.
+Install these packages as root. `fuse3` is the required FUSE package:
 
-For bundle layout details, see [sarus-suite-bundle-artifacts.d2](sarus-suite-bundle-artifacts.d2).
+```sh
+sudo apt-get update
+sudo apt-get install -y fuse3 uidmap
+```
+
+Other distributions provide the same components under packages usually named
+`fuse3` and `uidmap`.
+
+### Enable rootless containers
+
+For each user who will run the bundle, `/etc/subuid` and `/etc/subgid` must
+contain a subordinate ID range. For example, replace `alice` with the actual
+username and add this range to both files:
+
+```text
+alice:100000:65536
+```
+
+The user must also be able to run the mapping helpers:
+
+```sh
+command -v newuidmap newgidmap
+grep "^$(id -un):" /etc/subuid /etc/subgid
+```
+
+### Enable the kernel features
+
+The host kernel must provide:
+
+- unprivileged user namespaces, with `user.max_user_namespaces` greater than
+  `0`;
+- FUSE 3, installed through the distribution’s `fuse3` package, with
+  `/dev/fuse` present and accessible to the user; and
+- permission for the user to create rootless namespaces.
+
+On systems that expose these settings, check them with:
+
+```sh
+sysctl user.max_user_namespaces
+sysctl kernel.unprivileged_userns_clone 2>/dev/null || true
+test -e /dev/fuse && echo "/dev/fuse: OK"
+unshare -Ur true && echo "user namespaces: OK"
+```
+
+On Ubuntu, AppArmor can restrict unprivileged user namespaces even when the
+sysctl values are correct. If `unshare -Ur true` is denied, review the active
+AppArmor policy or ask the system administrator to allow unprivileged user
+namespaces. Re-login after changing user/group or subordinate-ID settings.
+
+Finally, validate the extracted bundle itself:
+
+```sh
+./bin/sarus-suite-shell -- sarus-suite-check
+```
+
+For bundle layout details, see [sarus-suite-bundle-artifacts.d2](docs/sarus-suite-bundle-artifacts.d2).
