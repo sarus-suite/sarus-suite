@@ -1,9 +1,9 @@
 # Sarus Suite
 
-Run Sarus containers from one portable Linux bundle.
+Run HPC containers from one portable Linux bundle, built on top of [Podman](https://github.com/podman-container-tools/podman).
 
-Download it, unpack it, and try a real container in under a minute—without a
-package manager or system-wide installation.
+Download it, unpack it, and try a real container in under a minute (without a
+package manager or system-wide installation).
 
 ## Try it now
 
