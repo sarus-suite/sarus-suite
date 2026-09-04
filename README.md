@@ -2,7 +2,7 @@
 
 Run HPC containers from one portable Linux bundle, built on top of [Podman](https://github.com/podman-container-tools/podman).
 
-Download it, unpack it, and try a real container in under a minute (without a
+Download it, unpack it, and try containers in under a minute (without a
 package manager or system-wide installation).
 
 ## Try it now
@@ -23,13 +23,13 @@ cd sarus-suite
 ./bin/sarus-suite-shell -- sarusctl run examples/ubuntu.toml cat /etc/os-release
 ```
 
-That’s the test drive: one directory, one command, and the container’s output.
+Test drive it:
 
 ![Sarus Suite demo](docs/sarus-suite-demo.gif)
 
 ## After your first run
 
-Try the second included distribution with the same command:
+Try the second example with the same command:
 
 ```sh
 ./bin/sarus-suite-shell -- sarusctl run examples/debian.toml cat /etc/os-release
