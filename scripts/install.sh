@@ -19,6 +19,10 @@ Options:
   --output-dir DIR        New or empty payload directory
   --parallax-store PATH   Per-user image store expression
                           (default: ${HOME}/.sarus-suite/ro-store)
+  --podman-graphroot PATH User-mode Podman persistent storage root
+                          (default: Podman's XDG data default)
+  --podman-runroot PATH   User-mode Podman runtime storage root
+                          (default: Podman's XDG runtime default)
   --import-binary SPEC    Replace PATH[:NAME] in the payload; repeatable
   --import-hook-dir DIR   Replace hooks with executable files from DIR and
                           mirror them into the suite bin directory; repeatable
@@ -262,6 +266,7 @@ render_user_template() {
   local dest="$2"
   local cdi_line=""
   local parallax_tmpdir_line parallax_logfile_line parallax_mp_logfile_line podman_tmp_path_line
+  local podman_graphroot_line="" podman_runroot_line=""
 
   if [ -d "${BUNDLE_ROOT}/etc/cdi" ]; then
     cdi_line="cdi_spec_dirs = [\"${USER_CONFIG_HOME}/cdi\"]"
@@ -270,6 +275,12 @@ render_user_template() {
   parallax_logfile_line="PARALLAX_MP_LOGFILE=\"${USER_STATE_DIR}/logs/parallax-mount.log\""
   parallax_mp_logfile_line="parallax_mp_logfile = \"${USER_STATE_DIR}/logs/parallax-mount.log\""
   podman_tmp_path_line='podman_tmp_path = "${XDG_RUNTIME_DIR}/tmp"'
+  if [ -n "$PODMAN_GRAPHROOT" ]; then
+    podman_graphroot_line="graphroot = \"${PODMAN_GRAPHROOT}\""
+  fi
+  if [ -n "$PODMAN_RUNROOT" ]; then
+    podman_runroot_line="runroot = \"${PODMAN_RUNROOT}\""
+  fi
 
   install -d -m 0755 "$(dirname "$dest")"
   sed \
@@ -278,8 +289,8 @@ render_user_template() {
     -e "s|@@SARUS_SUITE_CONFIG@@|$(escape_sed_replacement "$USER_CONFIG_HOME")|g" \
     -e "s|@@SARUS_SUITE_PARALLAX_STORE@@|$(escape_sed_replacement "$PARALLAX_STORE")|g" \
     -e "s|@@SARUS_SUITE_CDI_SPEC_DIRS@@|$(escape_sed_replacement "$cdi_line")|g" \
-    -e 's|@@SARUS_SUITE_PODMAN_GRAPHROOT_LINE@@||g' \
-    -e 's|@@SARUS_SUITE_PODMAN_RUNROOT_LINE@@||g' \
+    -e "s|@@SARUS_SUITE_PODMAN_GRAPHROOT_LINE@@|$(escape_sed_replacement "$podman_graphroot_line")|g" \
+    -e "s|@@SARUS_SUITE_PODMAN_RUNROOT_LINE@@|$(escape_sed_replacement "$podman_runroot_line")|g" \
     -e 's|@@SARUS_SUITE_PODMAN_STORAGE_OPTIONS_HEADER@@|[storage.options]|g' \
     -e "s|@@SARUS_SUITE_PODMAN_ADDITIONAL_IMAGESTORES_LINE@@|additionalimagestores = [\"$(escape_sed_replacement "$PARALLAX_STORE")\"]|g" \
     -e "s|@@SARUS_SUITE_PARALLAX_TMPDIR_LINE@@|$(escape_sed_replacement "$parallax_tmpdir_line")|g" \
@@ -386,6 +397,13 @@ apply_user_payload() {
     [ -d "$PARALLAX_STORE" ] || die "Parallax store is not a directory: ${PARALLAX_STORE}"
     [ -w "$PARALLAX_STORE" ] || die "Parallax store is not writable: ${PARALLAX_STORE}"
   fi
+  for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
+    [ -n "$path" ] || continue
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      [ -d "$path" ] && [ ! -L "$path" ] || die "Podman storage path is not a directory: ${path}"
+      [ -w "$path" ] || die "Podman storage path is not writable: ${path}"
+    fi
+  done
   if [ -e "$report_dest" ] || [ -L "$report_dest" ]; then
     [ -f "$report_dest" ] && [ ! -L "$report_dest" ] || die "refusing to replace non-regular report path: ${report_dest}"
   fi
@@ -410,6 +428,9 @@ apply_user_payload() {
       printf '%-14s %s\n' "$action" "file ${dest}"
     done
     printf '%-14s %s\n' WOULD_WRITE "report ${report_dest}"
+    for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
+      [ -z "$path" ] || [ -d "$path" ] || printf '%-14s %s\n' WOULD_CREATE "directory ${path}"
+    done
     return 0
   fi
 
@@ -447,6 +468,9 @@ apply_user_payload() {
   else
     install -d -m 0700 "$PARALLAX_STORE"
   fi
+  for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
+    [ -z "$path" ] || [ -d "$path" ] || install -d -m 0700 "$path"
+  done
   install -m 0600 "$report_tmp" "$report_dest"
   rm -f "$report_tmp"
   cat "$report_dest"
@@ -500,6 +524,8 @@ OUTPUT_DIR=""
 PREFIX="/opt/sarus-suite"
 PARALLAX_STORE='${HOME}/.sarus-suite/ro-store'
 PARALLAX_STORE_SET=0
+PODMAN_GRAPHROOT=""
+PODMAN_RUNROOT=""
 IMPORT_BINARY_SPECS=()
 IMPORT_HOOK_DIRS=()
 MODE="stage"
@@ -523,6 +549,8 @@ while [ $# -gt 0 ]; do
     --bundle-root) [ $# -ge 2 ] || die "--bundle-root requires a directory"; BUNDLE_ROOT="$2"; shift 2 ;;
     --output-dir) [ $# -ge 2 ] || die "--output-dir requires a directory"; OUTPUT_DIR="$2"; shift 2 ;;
     --parallax-store) [ $# -ge 2 ] || die "--parallax-store requires a path"; PARALLAX_STORE="$2"; PARALLAX_STORE_SET=1; shift 2 ;;
+    --podman-graphroot) [ $# -ge 2 ] || die "--podman-graphroot requires a path"; PODMAN_GRAPHROOT="$2"; shift 2 ;;
+    --podman-runroot) [ $# -ge 2 ] || die "--podman-runroot requires a path"; PODMAN_RUNROOT="$2"; shift 2 ;;
     --import-binary) [ $# -ge 2 ] || die "--import-binary requires PATH[:NAME]"; IMPORT_BINARY_SPECS+=("$2"); shift 2 ;;
     --import-hook-dir) [ $# -ge 2 ] || die "--import-hook-dir requires a directory"; IMPORT_HOOK_DIRS+=("$2"); shift 2 ;;
     --install-root) [ $# -ge 2 ] || die "--install-root requires a directory"; INSTALL_ROOT="$2"; shift 2 ;;
@@ -559,6 +587,8 @@ if [ -n "$OUTPUT_DIR" ]; then OUTPUT_DIR="$(strip_trailing_slash "$OUTPUT_DIR")"
 if [ -n "$INSTALL_ROOT" ]; then INSTALL_ROOT="$(strip_trailing_slash "$INSTALL_ROOT")"; fi
 USER_ROOT="$(strip_trailing_slash "$USER_ROOT")"
 REPORT_FILE="$(strip_trailing_slash "$REPORT_FILE")"
+if [ -n "$PODMAN_GRAPHROOT" ]; then PODMAN_GRAPHROOT="$(strip_trailing_slash "$PODMAN_GRAPHROOT")"; fi
+if [ -n "$PODMAN_RUNROOT" ]; then PODMAN_RUNROOT="$(strip_trailing_slash "$PODMAN_RUNROOT")"; fi
 require_absolute_path --bundle-root "$BUNDLE_ROOT"
 if [ "$MODE" = stage ]; then
   require_absolute_path --output-dir "$OUTPUT_DIR"
@@ -578,6 +608,12 @@ if [ "$MODE" = user ]; then
     PARALLAX_STORE="${USER_ROOT}/xdg/data/sarus-suite/parallax/ro-store"
   fi
   require_absolute_path --parallax-store "$PARALLAX_STORE"
+  for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
+    [ -n "$path" ] || continue
+    require_absolute_path "Podman storage path" "$path"
+    [ "$path" != / ] || die "Podman storage path cannot be the filesystem root"
+  done
+  [ -z "$PODMAN_GRAPHROOT" ] || [ "$PODMAN_GRAPHROOT" != "$PODMAN_RUNROOT" ] || die "--podman-graphroot and --podman-runroot must differ"
   case "$SHELL_INIT" in
     auto|none) ;;
     *) require_absolute_path --shell-init "$SHELL_INIT" ;;
@@ -585,6 +621,8 @@ if [ "$MODE" = user ]; then
 else
   [ "$USER_ROOT" = "${HOME:-}/.sarus-suite" ] || die "--user-root is only valid for user installation"
   [ "$SHELL_INIT" = auto ] || die "--shell-init is only valid for user installation"
+  [ -z "$PODMAN_GRAPHROOT" ] || die "--podman-graphroot is only valid for user installation"
+  [ -z "$PODMAN_RUNROOT" ] || die "--podman-runroot is only valid for user installation"
   case "$PARALLAX_STORE" in
     '$HOME/'*|'${HOME}/'*) ;;
     *) require_absolute_path --parallax-store "$PARALLAX_STORE" ;;
@@ -690,7 +728,11 @@ if [ "$MODE" = user ]; then
   ## Write environment metadata and install manifest
   manifest="$(payload_path /install/manifest.txt)"
   install -d -m 0755 "$(dirname "$manifest")"
-  printf 'SARUS_SUITE_INSTALLED_PARALLAX_STORE=%q\n' "$PARALLAX_STORE" > "$(payload_path /install/environment.sh)"
+  {
+    printf 'SARUS_SUITE_INSTALLED_PARALLAX_STORE=%q\n' "$PARALLAX_STORE"
+    printf 'SARUS_SUITE_INSTALLED_PODMAN_GRAPHROOT=%q\n' "$PODMAN_GRAPHROOT"
+    printf 'SARUS_SUITE_INSTALLED_PODMAN_RUNROOT=%q\n' "$PODMAN_RUNROOT"
+  } > "$(payload_path /install/environment.sh)"
   chmod 0644 "$(payload_path /install/environment.sh)"
   {
     printf 'install_mode=user\n'
@@ -700,6 +742,8 @@ if [ "$MODE" = user ]; then
     printf 'config_home=%s\n' "$USER_CONFIG_HOME"
     printf 'state_dir=%s\n' "$USER_STATE_DIR"
     printf 'parallax_store=%s\n' "$PARALLAX_STORE"
+    printf 'podman_graphroot=%s\n' "${PODMAN_GRAPHROOT:-XDG default}"
+    printf 'podman_runroot=%s\n' "${PODMAN_RUNROOT:-XDG default}"
   } > "$manifest"
   for ((i = 0; i < ${#IMPORT_BINARY_NAMES[@]}; i++)); do
     printf 'import_binary.%s.source=%s\n' "${IMPORT_BINARY_NAMES[$i]}" "${IMPORT_BINARY_PATHS[$i]}" >> "$manifest"
