@@ -20,8 +20,13 @@ ARCH=amd64 # use arm64 on ARM hosts
 curl -LO "https://github.com/sarus-suite/sarus-suite/releases/download/${VERSION}/sarus-suite-${VERSION}-${ARCH}.tar.gz"
 tar -xzf "sarus-suite-${VERSION}-${ARCH}.tar.gz"
 cd sarus-suite
-./bin/sarus-suite-shell -- sarusctl run examples/ubuntu.toml cat /etc/os-release
+./bin/sarus-suite-user-install
+exec "$SHELL" -l
+sarusctl run "$HOME/.sarus-suite/share/examples/ubuntu.toml" cat /etc/os-release
 ```
+
+The user-mode installer keeps the runtime and configuration under
+`~/.sarus-suite` and adds its `bin` directory to your shell startup file.
 
 Test drive it:
 
@@ -32,20 +37,21 @@ Test drive it:
 Try the second example with the same command:
 
 ```sh
-./bin/sarus-suite-shell -- sarusctl run examples/debian.toml cat /etc/os-release
+sarusctl run "$HOME/.sarus-suite/share/examples/debian.toml" cat /etc/os-release
 ```
 
 Or open an interactive shell:
 
 ```sh
-./bin/sarus-suite-shell
+sarusctl run "$HOME/.sarus-suite/share/examples/ubuntu.toml" /bin/bash
 ```
 
-The bundle contains example EDF files at `examples/ubuntu.toml` and
-`examples/debian.toml`. Check the local setup with:
+The installed bundle contains example EDF files at
+`~/.sarus-suite/share/examples/ubuntu.toml` and
+`~/.sarus-suite/share/examples/debian.toml`. Check the local setup with:
 
 ```sh
-./bin/sarus-suite-check
+sarus-suite-check
 ```
 
 ## System-wide installation for development
