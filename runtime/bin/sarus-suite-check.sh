@@ -81,7 +81,7 @@ main() {
   : "${SARUS_SUITE_BIN:?missing SARUS_SUITE_BIN}"
   : "${SARUS_SUITE_HOOK_BIN:?missing SARUS_SUITE_HOOK_BIN}"
 
-  # Set up paths for a system install/RPM versus a portable shell bundle.
+  # Set up paths for a system install/RPM versus user or portable shell modes.
   install_mode="${SARUS_SUITE_INSTALL_MODE:-shell}"
   if [ "$install_mode" = "system" ]; then
     PATH="${SARUS_SUITE_BIN}:${PATH:-/usr/bin:/bin}"
@@ -91,6 +91,13 @@ main() {
     CONTAINERS_POLICY="${CONTAINERS_POLICY:-${containers_config_dir}/policy.json}"
     PARALLAX_MP_CONFIG="${PARALLAX_MP_CONFIG:-${SARUS_SUITE_ETC}/parallax-mount.conf}"
     SARUSCTL_CONFIG_DIR="${SARUSCTL_CONFIG_DIR:-${SARUS_SUITE_ETC}/sarus-suite}"
+    sarusctl_config_file="${SARUSCTL_CONFIG_DIR}/90-sarusctl.conf"
+  elif [ "$install_mode" = "user" ]; then
+    : "${XDG_CONFIG_HOME:?missing XDG_CONFIG_HOME}"
+    : "${CONTAINERS_POLICY:?missing CONTAINERS_POLICY}"
+    : "${PARALLAX_MP_CONFIG:?missing PARALLAX_MP_CONFIG}"
+    : "${SARUSCTL_CONFIG_DIR:?missing SARUSCTL_CONFIG_DIR}"
+    containers_config_dir="${XDG_CONFIG_HOME}/containers"
     sarusctl_config_file="${SARUSCTL_CONFIG_DIR}/90-sarusctl.conf"
   else
     : "${XDG_CONFIG_HOME:?missing XDG_CONFIG_HOME}"
