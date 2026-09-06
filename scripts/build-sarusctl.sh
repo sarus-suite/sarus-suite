@@ -87,6 +87,31 @@ docker_cli_is_podman() {
   printf '%s\n' "${output}" | grep -Eiq 'podman|Emulate Docker CLI using podman'
 }
 
+repair_stale_podman_volumes() {
+  local volume mountpoint
+
+  docker_cli_is_podman || return 0
+
+  # Rootless Podman can retain a named volume in its database after the
+  # backing directory has disappeared (for example when the rootless store
+  # is on a temporary filesystem).  A subsequent container start then fails
+  # while Podman tries to read the volume for copy-up.  These volumes only
+  # contain disposable Cargo caches, so recreate only entries whose recorded
+  # mountpoint is no longer present.
+  for volume in \
+    sarusctl-static-cargo-registry \
+    sarusctl-static-cargo-git \
+    sarusctl-static-rustup
+  do
+    mountpoint="$(docker volume inspect --format '{{.Mountpoint}}' "${volume}" 2>/dev/null || true)"
+    [ -n "${mountpoint}" ] || continue
+    [ -d "${mountpoint}" ] && continue
+
+    log "removing stale Podman volume: ${volume} (${mountpoint})" >&2
+    docker volume rm --force "${volume}" >/dev/null
+  done
+}
+
 prepare_devcontainer_config() {
   local config_rel="$1"
   local config_path="${SARUSCTL_SRC_DIR}/${config_rel}"
@@ -138,6 +163,8 @@ if [ -n "${SARUSCTL_PREBUILT_BIN}" ]; then
   verify_linux_binary_arch "${SARUSCTL_BIN}"
   exit 0
 fi
+
+repair_stale_podman_volumes
 
 if [ ! -d "${SARUSCTL_SRC_DIR}/.git" ]; then
   "${ROOT_DIR}/scripts/fetch-components.sh"
