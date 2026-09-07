@@ -14,7 +14,7 @@ Pick the archive for your host (`amd64` or `arm64`), then run the included
 Ubuntu example:
 
 ```sh
-VERSION=v26.8.3
+VERSION=v26.9.1
 ARCH=amd64 # use arm64 on ARM hosts
 
 curl -LO "https://github.com/sarus-suite/sarus-suite/releases/download/${VERSION}/sarus-suite-${VERSION}-${ARCH}.tar.gz"
