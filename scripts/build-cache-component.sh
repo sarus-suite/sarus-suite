@@ -15,15 +15,18 @@ usage() {
 Usage:
   build-cache-component.sh metadata <component> <arch> <output-under-.work>
   build-cache-component.sh prepare  <component> <arch> <output-under-.work>
+  build-cache-component.sh restore  <component> <arch> <output-under-.work>
 
 Commands:
   metadata  Write deterministic input and publication metadata without building.
   prepare   Build one component and prepare a verified scratch-image context.
+  restore   Pull, verify, and extract one cache image into restored-root.
 
 Supported components:
   podman-glibc podman-static conmon netavark aardvark-dns passt crun catatonit
 
 This script never authenticates to a registry and never pushes an image.
+Restore uses the Docker credentials already configured by the caller.
 USAGE
 }
 
@@ -194,6 +197,82 @@ configure_component() {
       RUST_VERSION="$(jq -r '.build.args.RUST_VERSION' "${ROOT_DIR}/devcontainer/alpine/devcontainer.json")"
       ;;
   esac
+
+  OPTIONAL_ARTIFACTS=()
+  case "${COMPONENT}" in
+    podman-glibc|podman-static)
+      METADATA_PREFIX=podman
+      REQUIRED_ARTIFACTS=(
+        usr/local/bin/podman
+        etc/containers/seccomp.json
+        .build-metadata/podman.repo
+        .build-metadata/podman.ref
+        .build-metadata/podman.sha
+        .build-metadata/podman.seccomp
+        .build-metadata/podman.selinux
+        .build-metadata/podman.apparmor
+        .build-metadata/podman.linkage
+        .build-metadata/podman.glibc-baseline
+        .build-metadata/containers-common.ref
+        .build-metadata/seccomp.sha256
+      )
+      OPTIONAL_ARTIFACTS=(usr/local/lib/podman/rootlessport)
+      ;;
+    conmon)
+      METADATA_PREFIX=conmon
+      REQUIRED_ARTIFACTS=(
+        usr/local/lib/podman/conmon
+        .build-metadata/conmon.repo
+        .build-metadata/conmon.ref
+        .build-metadata/conmon.sha
+      )
+      ;;
+    netavark)
+      METADATA_PREFIX=netavark
+      REQUIRED_ARTIFACTS=(
+        usr/local/lib/podman/netavark
+        .build-metadata/netavark.repo
+        .build-metadata/netavark.ref
+        .build-metadata/netavark.sha
+      )
+      ;;
+    aardvark-dns)
+      METADATA_PREFIX=aardvark-dns
+      REQUIRED_ARTIFACTS=(
+        usr/local/lib/podman/aardvark-dns
+        .build-metadata/aardvark-dns.repo
+        .build-metadata/aardvark-dns.ref
+        .build-metadata/aardvark-dns.sha
+      )
+      ;;
+    passt)
+      METADATA_PREFIX=passt
+      REQUIRED_ARTIFACTS=(
+        usr/local/bin/pasta
+        .build-metadata/passt.repo
+        .build-metadata/passt.ref
+        .build-metadata/passt.sha
+      )
+      ;;
+    crun)
+      METADATA_PREFIX=crun
+      REQUIRED_ARTIFACTS=(
+        usr/local/bin/crun
+        .build-metadata/crun.repo
+        .build-metadata/crun.ref
+        .build-metadata/crun.sha
+      )
+      ;;
+    catatonit)
+      METADATA_PREFIX=catatonit
+      REQUIRED_ARTIFACTS=(
+        usr/local/lib/podman/catatonit
+        .build-metadata/catatonit.repo
+        .build-metadata/catatonit.ref
+        .build-metadata/catatonit.sha
+      )
+      ;;
+  esac
 }
 
 compute_recipe_digest() {
@@ -282,54 +361,15 @@ copy_optional_artifact() {
 }
 
 stage_component() {
-  local metadata_prefix
-
   COPIED_FILES=()
-  case "${COMPONENT}" in
-    podman-glibc|podman-static)
-      metadata_prefix=podman
-      copy_artifact usr/local/bin/podman
-      copy_optional_artifact usr/local/lib/podman/rootlessport
-      copy_artifact etc/containers/seccomp.json
-      for name in repo ref sha seccomp selinux apparmor linkage glibc-baseline; do
-        copy_artifact ".build-metadata/${metadata_prefix}.${name}"
-      done
-      copy_artifact .build-metadata/containers-common.ref
-      copy_artifact .build-metadata/seccomp.sha256
-      ;;
-    conmon)
-      metadata_prefix=conmon
-      copy_artifact usr/local/lib/podman/conmon
-      ;;
-    netavark)
-      metadata_prefix=netavark
-      copy_artifact usr/local/lib/podman/netavark
-      ;;
-    aardvark-dns)
-      metadata_prefix=aardvark-dns
-      copy_artifact usr/local/lib/podman/aardvark-dns
-      ;;
-    passt)
-      metadata_prefix=passt
-      copy_artifact usr/local/bin/pasta
-      ;;
-    crun)
-      metadata_prefix=crun
-      copy_artifact usr/local/bin/crun
-      ;;
-    catatonit)
-      metadata_prefix=catatonit
-      copy_artifact usr/local/lib/podman/catatonit
-      ;;
-  esac
+  for artifact in "${REQUIRED_ARTIFACTS[@]}"; do
+    copy_artifact "${artifact}"
+  done
+  for artifact in "${OPTIONAL_ARTIFACTS[@]}"; do
+    copy_optional_artifact "${artifact}"
+  done
 
-  if [ "${metadata_prefix}" != podman ]; then
-    for name in repo ref sha; do
-      copy_artifact ".build-metadata/${metadata_prefix}.${name}"
-    done
-  fi
-
-  [ "$(sed -n '1p' "${CONTEXT_ROOT}/.build-metadata/${metadata_prefix}.sha")" = "${SOURCE_SHA}" ] \
+  [ "$(sed -n '1p' "${CONTEXT_ROOT}/.build-metadata/${METADATA_PREFIX}.sha")" = "${SOURCE_SHA}" ] \
     || die "staged source commit does not match the pinned commit for ${COMPONENT}"
 }
 
@@ -381,6 +421,120 @@ prepare_component() {
   log "prepared image context at ${OUTPUT_DIR}/context"
 }
 
+artifact_is_allowed() {
+  local expected
+
+  for expected in "${REQUIRED_ARTIFACTS[@]}" "${OPTIONAL_ARTIFACTS[@]}"; do
+    [ "$1" != "${expected}" ] || return 0
+  done
+  return 1
+}
+
+cleanup_restore() {
+  if [ -n "${RESTORE_CONTAINER_ID:-}" ]; then
+    docker rm -f "${RESTORE_CONTAINER_ID}" >/dev/null 2>&1 || true
+  fi
+  if [ -n "${RESTORE_TEMP_DIR:-}" ]; then
+    rm -rf "${RESTORE_TEMP_DIR}"
+  fi
+}
+
+restore_component() {
+  local repository image expected_fingerprint expected_tag actual relative_path
+  local expected_digest actual_digest destination_path
+
+  command -v docker >/dev/null 2>&1 || {
+    log "cache unavailable for ${COMPONENT}: docker command not found"
+    return 10
+  }
+
+  repository="${BUILD_CACHE_REPOSITORY:-ghcr.io/sarus-suite/sarus-suite-build-cache}"
+  repository="${repository%/}"
+  expected_tag="$(jq -r '.tag' "${OUTPUT_DIR}/publication-metadata.json")"
+  expected_fingerprint="$(jq -r '.fingerprint' "${OUTPUT_DIR}/publication-metadata.json")"
+  image="${repository}:${expected_tag}"
+
+  log "checking ${image}"
+  if ! docker pull --platform "linux/${ARCH}" "${image}"; then
+    log "cache miss for ${COMPONENT}: ${image}"
+    return 10
+  fi
+
+  actual="$(docker image inspect "${image}" --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.component" }}')"
+  [ "${actual}" = "${COMPONENT}" ] || die "cache image component mismatch: expected ${COMPONENT}, got ${actual}"
+  actual="$(docker image inspect "${image}" --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.fingerprint" }}')"
+  [ "${actual}" = "${expected_fingerprint}" ] || die "cache image fingerprint mismatch for ${COMPONENT}"
+  actual="$(docker image inspect "${image}" --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.architecture" }}')"
+  [ "${actual}" = "${ARCH}" ] || die "cache image architecture label mismatch: expected ${ARCH}, got ${actual}"
+  actual="$(docker image inspect "${image}" --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.source-commit" }}')"
+  [ "${actual}" = "${SOURCE_SHA}" ] || die "cache image source commit mismatch for ${COMPONENT}"
+  actual="$(docker image inspect "${image}" --format '{{.Architecture}}')"
+  [ "${actual}" = "${ARCH}" ] || die "cache image platform mismatch: expected ${ARCH}, got ${actual}"
+
+  [ ! -e "${OUTPUT_DIR}/restored-root" ] || die "restored output already exists: ${OUTPUT_DIR}/restored-root"
+  RESTORE_TEMP_DIR="$(mktemp -d "${OUTPUT_DIR}/restore.XXXXXX")"
+  RESTORE_CONTAINER_ID="$(docker create --platform "linux/${ARCH}" "${image}" /sarus-suite-cache-placeholder)"
+  trap cleanup_restore EXIT INT TERM
+
+  docker cp "${RESTORE_CONTAINER_ID}:/usr/share/sarus-suite/build-cache-input.json" \
+    "${RESTORE_TEMP_DIR}/input-manifest.json" >/dev/null
+  docker cp "${RESTORE_CONTAINER_ID}:/usr/share/sarus-suite/build-cache-artifact.json" \
+    "${RESTORE_TEMP_DIR}/artifact-manifest.json" >/dev/null
+
+  cmp "${OUTPUT_DIR}/input-manifest.json" "${RESTORE_TEMP_DIR}/input-manifest.json" >/dev/null \
+    || die "cache image input manifest mismatch for ${COMPONENT}"
+  jq -e \
+    --slurpfile expected "${OUTPUT_DIR}/input-manifest.json" \
+    --arg fingerprint "${expected_fingerprint}" \
+    --argjson schemaVersion "${SCHEMA_VERSION}" \
+    '.schemaVersion == $schemaVersion
+      and .artifactType == "sarus-suite-build-cache"
+      and .fingerprint == $fingerprint
+      and .input == $expected[0]
+      and (.files | type == "object")' \
+    "${RESTORE_TEMP_DIR}/artifact-manifest.json" >/dev/null \
+    || die "invalid cache artifact manifest for ${COMPONENT}"
+
+  for relative_path in "${REQUIRED_ARTIFACTS[@]}"; do
+    jq -e --arg path "${relative_path}" '.files | has($path)' \
+      "${RESTORE_TEMP_DIR}/artifact-manifest.json" >/dev/null \
+      || die "cache image is missing required artifact: ${relative_path}"
+  done
+
+  while IFS= read -r relative_path; do
+    case "${relative_path}" in
+      ''|/*|..|../*|*/../*) die "unsafe path in cache artifact manifest: ${relative_path}" ;;
+    esac
+    artifact_is_allowed "${relative_path}" \
+      || die "unexpected path in cache artifact manifest: ${relative_path}"
+
+    expected_digest="$(jq -r --arg path "${relative_path}" '.files[$path]' \
+      "${RESTORE_TEMP_DIR}/artifact-manifest.json")"
+    [[ "${expected_digest}" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      || die "invalid checksum for cached artifact: ${relative_path}"
+
+    destination_path="${RESTORE_TEMP_DIR}/root/${relative_path}"
+    mkdir -p "$(dirname "${destination_path}")"
+    docker cp "${RESTORE_CONTAINER_ID}:/${relative_path}" "${destination_path}" >/dev/null
+    [ -f "${destination_path}" ] && [ ! -L "${destination_path}" ] \
+      || die "cached artifact is not a regular file: ${relative_path}"
+    actual_digest="sha256:$(sha256_file "${destination_path}")"
+    [ "${actual_digest}" = "${expected_digest}" ] \
+      || die "checksum mismatch for cached artifact: ${relative_path}"
+  done < <(jq -r '.files | keys[]' "${RESTORE_TEMP_DIR}/artifact-manifest.json")
+
+  [ "$(sed -n '1p' "${RESTORE_TEMP_DIR}/root/.build-metadata/${METADATA_PREFIX}.sha")" = "${SOURCE_SHA}" ] \
+    || die "restored source commit does not match the pin for ${COMPONENT}"
+
+  mv "${RESTORE_TEMP_DIR}/root" "${OUTPUT_DIR}/restored-root"
+  docker rm -f "${RESTORE_CONTAINER_ID}" >/dev/null
+  RESTORE_CONTAINER_ID=''
+  rm -rf "${RESTORE_TEMP_DIR}"
+  RESTORE_TEMP_DIR=''
+  trap - EXIT INT TERM
+  log "restored ${COMPONENT} from ${image}"
+}
+
 main() {
   local command component arch output
 
@@ -401,6 +555,10 @@ main() {
     prepare)
       write_metadata
       prepare_component
+      ;;
+    restore)
+      write_metadata
+      restore_component
       ;;
     *)
       usage >&2
