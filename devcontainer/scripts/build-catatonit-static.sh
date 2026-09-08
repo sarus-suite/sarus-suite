@@ -13,7 +13,7 @@ OUTPUT="${PREFIX_DIR}/usr/local/lib/podman/catatonit"
 
 build_require_cmd git
 build_require_cmd make
-build_checkout_tag "${CATATONIT_REPO}" "${CATATONIT_VERSION}" "${SRC_DIR}"
+build_checkout_tag "${CATATONIT_REPO}" "${CATATONIT_VERSION}" "${SRC_DIR}" "${CATATONIT_SHA}"
 
 cd "${SRC_DIR}"
 ./autogen.sh
