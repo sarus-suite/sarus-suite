@@ -1,0 +1,207 @@
+name: Publish sarus-suite build cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to publish
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - podman-glibc
+          - podman-static
+          - conmon
+          - netavark
+          - aardvark-dns
+          - passt
+          - crun
+          - catatonit
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
+env:
+  CACHE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/sarus-suite-build-cache
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.component }} for ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(inputs.component == 'all' && '["podman-glibc","podman-static","conmon","netavark","aardvark-dns","passt","crun","catatonit"]' || format('["{0}"]', inputs.component)) }}
+        arch:
+          - amd64
+          - arm64
+
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    concurrency:
+      group: build-cache-${{ matrix.component }}-${{ matrix.arch }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compute cache identity
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_dir=".work/build-cache/${{ matrix.component }}-${{ matrix.arch }}"
+          ./scripts/build-cache-component.sh metadata \
+            "${{ matrix.component }}" \
+            "${{ matrix.arch }}" \
+            "${output_dir}"
+
+          metadata="${output_dir}/publication-metadata.json"
+          input_manifest="${output_dir}/input-manifest.json"
+          tag="$(jq -r '.tag' "${metadata}")"
+          {
+            echo "output_dir=${output_dir}"
+            echo "context=${output_dir}/context"
+            echo "image=${CACHE_REPOSITORY}:${tag}"
+            echo "tag=${tag}"
+            echo "component=$(jq -r '.component' "${metadata}")"
+            echo "source_version=$(jq -r '.sourceVersion' "${metadata}")"
+            echo "architecture=$(jq -r '.architecture' "${metadata}")"
+            echo "fingerprint=$(jq -r '.fingerprint' "${metadata}")"
+            echo "description=$(jq -r '.description' "${metadata}")"
+            echo "recipe_digest=$(jq -r '.build.recipeDigest' "${input_manifest}")"
+            echo "source_commit=$(jq -r '.source.commit' "${input_manifest}")"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check immutable cache tag
+        id: existing
+        shell: bash
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          EXPECTED_COMPONENT: ${{ steps.metadata.outputs.component }}
+          EXPECTED_FINGERPRINT: ${{ steps.metadata.outputs.fingerprint }}
+          EXPECTED_ARCHITECTURE: ${{ steps.metadata.outputs.architecture }}
+        run: |
+          set -euo pipefail
+          if ! docker pull "${IMAGE}"; then
+            echo 'exists=false' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          actual_component="$(docker image inspect "${IMAGE}" \
+            --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.component" }}')"
+          actual_fingerprint="$(docker image inspect "${IMAGE}" \
+            --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.fingerprint" }}')"
+          actual_architecture="$(docker image inspect "${IMAGE}" \
+            --format '{{ index .Config.Labels "io.github.sarus-suite.build-cache.architecture" }}')"
+
+          [ "${actual_component}" = "${EXPECTED_COMPONENT}" ] || {
+            printf 'existing tag component mismatch: expected %s, got %s\n' \
+              "${EXPECTED_COMPONENT}" "${actual_component}" >&2
+            exit 1
+          }
+          [ "${actual_fingerprint}" = "${EXPECTED_FINGERPRINT}" ] || {
+            printf 'existing tag fingerprint mismatch: expected %s, got %s\n' \
+              "${EXPECTED_FINGERPRINT}" "${actual_fingerprint}" >&2
+            exit 1
+          }
+          [ "${actual_architecture}" = "${EXPECTED_ARCHITECTURE}" ] || {
+            printf 'existing tag architecture mismatch: expected %s, got %s\n' \
+              "${EXPECTED_ARCHITECTURE}" "${actual_architecture}" >&2
+            exit 1
+          }
+
+          echo 'exists=true' >> "${GITHUB_OUTPUT}"
+          echo "digest=$(docker image inspect "${IMAGE}" --format '{{ index .RepoDigests 0 }}')" \
+            >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Node.js
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install devcontainer CLI
+        if: steps.existing.outputs.exists != 'true'
+        run: npm install -g @devcontainers/cli
+
+      - name: Check build tools
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker version
+          devcontainer --version
+
+      - name: Build and prepare component
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/build-cache-component.sh prepare \
+            "${{ matrix.component }}" \
+            "${{ matrix.arch }}" \
+            "${{ steps.metadata.outputs.output_dir }}"
+          test -s "${{ steps.metadata.outputs.context }}/root/usr/share/sarus-suite/build-cache-artifact.json"
+
+      - name: Set up Docker Buildx
+        if: steps.existing.outputs.exists != 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push cache image
+        id: push
+        if: steps.existing.outputs.exists != 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ steps.metadata.outputs.context }}
+          file: ./devcontainer/build-cache/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          tags: ${{ steps.metadata.outputs.image }}
+          sbom: true
+          provenance: mode=max
+          labels: |
+            org.opencontainers.image.title=Sarus Suite build cache - ${{ steps.metadata.outputs.component }}
+            org.opencontainers.image.description=${{ steps.metadata.outputs.description }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.metadata.outputs.source_version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.vendor=Sarus Suite
+            io.github.sarus-suite.build-cache.component=${{ steps.metadata.outputs.component }}
+            io.github.sarus-suite.build-cache.architecture=${{ steps.metadata.outputs.architecture }}
+            io.github.sarus-suite.build-cache.fingerprint=${{ steps.metadata.outputs.fingerprint }}
+            io.github.sarus-suite.build-cache.recipe-digest=${{ steps.metadata.outputs.recipe_digest }}
+            io.github.sarus-suite.build-cache.source-commit=${{ steps.metadata.outputs.source_commit }}
+
+      - name: Write workflow summary
+        if: always() && steps.metadata.outcome == 'success'
+        shell: bash
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          EXISTED: ${{ steps.existing.outputs.exists }}
+          EXISTING_DIGEST: ${{ steps.existing.outputs.digest }}
+          PUSHED_DIGEST: ${{ steps.push.outputs.digest }}
+          FINGERPRINT: ${{ steps.metadata.outputs.fingerprint }}
+        run: |
+          set -euo pipefail
+          digest="${PUSHED_DIGEST:-${EXISTING_DIGEST:-unknown}}"
+          status=published
+          [ "${EXISTED}" != true ] || status='already existed'
+          {
+            echo '### Sarus Suite build cache'
+            echo
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Status: ${status}"
+            echo "- Digest: \`${digest}\`"
+            echo "- Fingerprint: \`${FINGERPRINT}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
