@@ -67,6 +67,10 @@ normalize_output_dir() {
   OUTPUT_DIR="${ROOT_DIR}/${OUTPUT_REL}"
 }
 
+read_builder_base() {
+  awk '$1 == "FROM" { print $2; exit }' "$1"
+}
+
 configure_component() {
   COMPONENT="$1"
   ARCH="$(normalize_arch "$2")"
@@ -82,7 +86,7 @@ configure_component() {
       SOURCE_SHA="${PODMAN_SHA}"
       BUILD_SCRIPT=devcontainer/scripts/build-podman-glibc.sh
       BUILD_RUNNER=scripts/run-glibc-build.sh
-      BUILDER_BASE="$(sed -n 's/^FROM[[:space:]]\+//p' "${ROOT_DIR}/devcontainer/glibc/Dockerfile" | head -n 1)"
+      BUILDER_BASE="$(read_builder_base "${ROOT_DIR}/devcontainer/glibc/Dockerfile")"
       GO_VERSION="$(jq -r '.build.args.GO_VERSION' "${ROOT_DIR}/devcontainer/glibc/devcontainer.json")"
       BUILD_MODE=glibc
       BUILD_OPTIONS="GOFLAGS=-buildvcs=false;BUILDTAGS=${PODMAN_GLIBC_BUILDTAGS:-seccomp selinux apparmor exclude_graphdriver_devicemapper containers_image_openpgp btrfs_noversion exclude_graphdriver_btrfs};EXTRA_LDFLAGS=${PODMAN_GLIBC_EXTRA_LDFLAGS:--s -w -linkmode=external -extldflags \"${PODMAN_GLIBC_EXTLDFLAGS:--static-libgcc}\"};GLIBC_BASELINE=${PODMAN_GLIBC_BASELINE:-2.34}"
@@ -102,7 +106,7 @@ configure_component() {
       SOURCE_SHA="${PODMAN_SHA}"
       BUILD_SCRIPT=devcontainer/scripts/build-podman-static.sh
       BUILD_RUNNER=scripts/run-alpine-build.sh
-      BUILDER_BASE="$(sed -n 's/^FROM[[:space:]]\+//p' "${ROOT_DIR}/devcontainer/alpine/Dockerfile" | head -n 1)"
+      BUILDER_BASE="$(read_builder_base "${ROOT_DIR}/devcontainer/alpine/Dockerfile")"
       GO_VERSION="$(jq -r '.build.args.GO_VERSION' "${ROOT_DIR}/devcontainer/alpine/devcontainer.json")"
       BUILD_MODE=static
       BUILD_OPTIONS="GOFLAGS=-buildvcs=false;BUILDTAGS=${PODMAN_BUILDTAGS};EXTRA_LDFLAGS=${EXTRA_LDFLAGS:--s -w -extldflags=-static}"
@@ -181,7 +185,7 @@ configure_component() {
   esac
 
   if [ "${COMPONENT}" != podman-glibc ] && [ "${COMPONENT}" != podman-static ]; then
-    BUILDER_BASE="$(sed -n 's/^FROM[[:space:]]\+//p' "${ROOT_DIR}/devcontainer/alpine/Dockerfile" | head -n 1)"
+    BUILDER_BASE="$(read_builder_base "${ROOT_DIR}/devcontainer/alpine/Dockerfile")"
     RECIPE_FILES=(
       devcontainer/alpine/Dockerfile
       devcontainer/alpine/devcontainer.json
