@@ -13,7 +13,7 @@ OUTPUT="${PREFIX_DIR}/usr/local/lib/podman/netavark"
 
 build_require_cmd git
 build_require_cmd cargo
-build_checkout_tag "${NETAVARK_REPO}" "${NETAVARK_VERSION}" "${SRC_DIR}"
+build_checkout_tag "${NETAVARK_REPO}" "${NETAVARK_VERSION}" "${SRC_DIR}" "${NETAVARK_SHA}"
 
 cd "${SRC_DIR}"
 [ -n "${RUST_MUSL_TARGET}" ] || build_die "unsupported TARGET_ARCH for netavark: ${TARGET_ARCH}"

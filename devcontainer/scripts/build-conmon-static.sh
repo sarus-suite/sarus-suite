@@ -14,7 +14,7 @@ OUTPUT="${PREFIX_DIR}/usr/local/lib/podman/conmon"
 build_require_cmd git
 build_require_cmd make
 build_require_cmd pkg-config
-build_checkout_tag "${CONMON_REPO}" "${CONMON_VERSION}" "${SRC_DIR}"
+build_checkout_tag "${CONMON_REPO}" "${CONMON_VERSION}" "${SRC_DIR}" "${CONMON_SHA}"
 
 cd "${SRC_DIR}"
 make git-vars bin/conmon \

@@ -13,7 +13,7 @@ OUTPUT="${PREFIX_DIR}/usr/local/bin/pasta"
 
 build_require_cmd git
 build_require_cmd make
-build_checkout_tag "${PASST_REPO}" "${PASST_VERSION}" "${SRC_DIR}"
+build_checkout_tag "${PASST_REPO}" "${PASST_VERSION}" "${SRC_DIR}" "${PASST_SHA}"
 
 cd "${SRC_DIR}"
 make -n static >/dev/null 2>&1 || build_die "passt ref does not provide the expected static target"

@@ -31,6 +31,7 @@ build_checkout_tag() {
   repo="$1"
   ref="$2"
   destination="$3"
+  expected_sha="${4:-}"
 
   mkdir -p "$(dirname "${destination}")"
   git init -q "${destination}"
@@ -38,6 +39,9 @@ build_checkout_tag() {
   git -C "${destination}" fetch --depth 1 origin "refs/tags/${ref}:refs/tags/${ref}" >/dev/null
   git -C "${destination}" checkout --detach "refs/tags/${ref}" >/dev/null
   BUILD_CHECKOUT_SHA="$(git -C "${destination}" rev-parse HEAD)"
+  if [ -n "${expected_sha}" ] && [ "${BUILD_CHECKOUT_SHA}" != "${expected_sha}" ]; then
+    build_die "source commit mismatch for ${repo} ${ref}: expected ${expected_sha}, got ${BUILD_CHECKOUT_SHA}"
+  fi
   export BUILD_CHECKOUT_SHA
 }
 

@@ -18,7 +18,7 @@ build_require_cmd go
 build_require_cmd curl
 
 mkdir -p "${PREFIX_DIR}/usr/local/bin" "${PREFIX_DIR}/usr/local/lib/podman" "${PREFIX_DIR}/etc/containers"
-build_checkout_tag "${PODMAN_REPO}" "${PODMAN_VERSION}" "${SRC_DIR}"
+build_checkout_tag "${PODMAN_REPO}" "${PODMAN_VERSION}" "${SRC_DIR}" "${PODMAN_SHA}"
 
 cd "${SRC_DIR}"
 

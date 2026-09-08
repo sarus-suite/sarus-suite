@@ -14,7 +14,7 @@ OUTPUT="${PREFIX_DIR}/usr/local/bin/crun"
 build_require_cmd git
 build_require_cmd make
 build_require_cmd pkg-config
-build_checkout_tag "${CRUN_REPO}" "${CRUN_VERSION}" "${SRC_DIR}"
+build_checkout_tag "${CRUN_REPO}" "${CRUN_VERSION}" "${SRC_DIR}" "${CRUN_SHA}"
 
 cd "${SRC_DIR}"
 git submodule update --init --recursive
