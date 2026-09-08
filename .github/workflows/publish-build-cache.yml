@@ -26,7 +26,7 @@ permissions:
   id-token: write
 
 env:
-  CACHE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/sarus-suite-build-cache
+  BUILD_CACHE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/sarus-suite-build-cache
 
 jobs:
   publish:
@@ -65,7 +65,7 @@ jobs:
           {
             echo "output_dir=${output_dir}"
             echo "context=${output_dir}/context"
-            echo "image=${CACHE_REPOSITORY}:${tag}"
+            echo "image=${BUILD_CACHE_REPOSITORY}:${tag}"
             echo "tag=${tag}"
             echo "component=$(jq -r '.component' "${metadata}")"
             echo "source_version=$(jq -r '.sourceVersion' "${metadata}")"
@@ -182,6 +182,18 @@ jobs:
             io.github.sarus-suite.build-cache.fingerprint=${{ steps.metadata.outputs.fingerprint }}
             io.github.sarus-suite.build-cache.recipe-digest=${{ steps.metadata.outputs.recipe_digest }}
             io.github.sarus-suite.build-cache.source-commit=${{ steps.metadata.outputs.source_commit }}
+
+      - name: Verify cache image can be restored
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_output=".work/build-cache/verify-${{ matrix.component }}-${{ matrix.arch }}"
+          rm -rf "${verify_output}"
+          ./scripts/build-cache-component.sh restore \
+            "${{ matrix.component }}" \
+            "${{ matrix.arch }}" \
+            "${verify_output}"
+          test -d "${verify_output}/restored-root"
 
       - name: Write workflow summary
         if: always() && steps.metadata.outcome == 'success'
