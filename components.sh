@@ -45,7 +45,7 @@ OUT_DIR="${OUT_DIR:-${DIST_DIR}/${BUNDLE_NAME}-${BUNDLE_VERSION}-${TARGET_ARCH}}
 BUNDLE_ROOT="${BUNDLE_ROOT:-${OUT_DIR}/${BUNDLE_NAME}}"
 
 PARALLAX_REPO="${PARALLAX_REPO:-https://github.com/sarus-suite/parallax.git}"
-PARALLAX_REF="${PARALLAX_REF:-parallax-static}"
+PARALLAX_REF="${PARALLAX_REF:-main}"
 PARALLAX_SRC_DIR="${PARALLAX_SRC_DIR:-${SRC_DIR}/parallax}"
 PARALLAX_DEVCONTAINER_CONFIG="${PARALLAX_DEVCONTAINER_CONFIG:-.devcontainer/alpine/devcontainer.json}"
 PARALLAX_BUILD_SCRIPT="${PARALLAX_BUILD_SCRIPT:-.devcontainer/scripts/build-static.sh}"
