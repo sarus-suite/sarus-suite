@@ -7,12 +7,14 @@ Usage:
   install.sh stage --bundle-root DIR --output-dir DIR [OPTIONS]
   install.sh apply --bundle-root DIR [OPTIONS]
   install.sh user --bundle-root DIR [OPTIONS]
+  install.sh user-uninstall [--user-root DIR] [OPTIONS]
 
 Sets up Sarus Suite system or persistent per-user layouts.
 `stage` writes the layout into OUTPUT_DIR without mutating the host;
 RPM packaging can then consume that tree.
 `apply` stages privately, dry-run collision check, and copies the same tree into the system.
 `user` installs a private runtime and XDG tree below ~/.sarus-suite.
+`user-uninstall` removes that private runtime while retaining image stores outside it.
 
 Options:
   --bundle-root DIR       Assembled Sarus Suite bundle
@@ -32,7 +34,7 @@ Options:
   --shell-init TARGET     Update TARGET with a guarded PATH entry; TARGET may
                           be "auto" (default), "none", or an absolute file
   --force                 Replace differing regular files during apply/user
-  --dry-run               Preview apply/user without changing the target
+  --dry-run               Preview apply/user/user-uninstall without changes
   -h, --help              Show this help
 USAGE
 }
@@ -315,6 +317,21 @@ WRAPPER
   chmod 0755 "$dest"
 }
 
+write_user_uninstall_wrapper() {
+  local dest="$1"
+
+  install -d -m 0755 "$(dirname "$dest")"
+  cat > "$dest" <<'WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+USER_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
+exec "${USER_ROOT}/libexec/sarus-suite/install.sh" user-uninstall \
+  --user-root "${USER_ROOT}" "$@"
+WRAPPER
+  chmod 0755 "$dest"
+}
+
 resolve_shell_init() {
   case "$SHELL_INIT" in
     none) printf '\n' ;;
@@ -381,10 +398,109 @@ write_user_shell_init() {
   printf '%-14s %s\n' UPDATED "shell init ${rcfile}"
 }
 
+manifest_value() {
+  local key="$1"
+  local manifest="$2"
+
+  sed -n "s/^${key}=//p" "$manifest" | sed -n '1p'
+}
+
+remove_user_shell_init() {
+  local rcfile="$1"
+  local start_marker='# >>> sarus-suite user install >>>'
+  local end_marker='# <<< sarus-suite user install <<<'
+  local start_count end_count mode tmp
+
+  [ -n "$rcfile" ] || return 0
+  if [ ! -e "$rcfile" ] && [ ! -L "$rcfile" ]; then
+    printf '%-14s %s\n' UNCHANGED "shell init ${rcfile} (not found)"
+    return 0
+  fi
+  [ -f "$rcfile" ] || die "shell init target is not a regular file: ${rcfile}"
+  start_count="$(grep -Fc "$start_marker" "$rcfile" || true)"
+  end_count="$(grep -Fc "$end_marker" "$rcfile" || true)"
+  if [ "$start_count" -eq 0 ] && [ "$end_count" -eq 0 ]; then
+    printf '%-14s %s\n' UNCHANGED "shell init ${rcfile} (entry not found)"
+    return 0
+  fi
+  [ "$start_count" -eq 1 ] && [ "$end_count" -eq 1 ] || \
+    die "shell init contains an invalid Sarus Suite entry: ${rcfile}"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '%-14s %s\n' WOULD_UPDATE "shell init ${rcfile}"
+    return 0
+  fi
+
+  mode="$(file_mode "$rcfile")"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/sarus-suite-shell-init.XXXXXX")"
+  sed "/^# >>> sarus-suite user install >>>$/,/^# <<< sarus-suite user install <<<$/{d;}" \
+    "$rcfile" > "$tmp"
+  cat "$tmp" > "$rcfile"
+  chmod "$mode" "$rcfile"
+  rm -f "$tmp"
+  printf '%-14s %s\n' UPDATED "shell init ${rcfile}"
+}
+
+uninstall_user_payload() {
+  local manifest="${USER_ROOT}/install/manifest.txt"
+  local installed_root shell_init_file parallax_store podman_graphroot podman_runroot path running_containers
+
+  [ -d "$USER_ROOT" ] && [ ! -L "$USER_ROOT" ] || die "user installation not found: ${USER_ROOT}"
+  [ -O "$USER_ROOT" ] || die "user root is not owned by the current user: ${USER_ROOT}"
+  [ -f "$manifest" ] && [ ! -L "$manifest" ] || die "user install manifest not found: ${manifest}"
+  [ "$(manifest_value install_mode "$manifest")" = user ] || die "not a Sarus Suite user installation: ${USER_ROOT}"
+  installed_root="$(manifest_value install_root "$manifest")"
+  [ "$installed_root" = "$USER_ROOT" ] || die "install manifest belongs to another user root: ${installed_root}"
+
+  shell_init_file="$(manifest_value shell_init "$manifest")"
+  if ! grep -q '^shell_init=' "$manifest"; then
+    shell_init_file="$(resolve_shell_init)"
+  fi
+  parallax_store="$(manifest_value parallax_store "$manifest")"
+  podman_graphroot="$(manifest_value podman_graphroot "$manifest")"
+  podman_runroot="$(manifest_value podman_runroot "$manifest")"
+  [ "$podman_graphroot" != 'XDG default' ] || podman_graphroot="${USER_ROOT}/xdg/data/containers/storage"
+
+  printf 'Sarus Suite user uninstall\n'
+  printf 'user_root=%s\n' "$USER_ROOT"
+  for path in "$parallax_store" "$podman_graphroot" "$podman_runroot"; do
+    [ -n "$path" ] && [ "$path" != 'XDG default' ] || continue
+    case "$path" in
+      "$USER_ROOT"|"$USER_ROOT"/*) ;;
+      *) printf '%-14s %s\n' RETAINED "external storage ${path}" ;;
+    esac
+  done
+  if [ -e "${HOME}/.config/containers/policy.json" ] || [ -L "${HOME}/.config/containers/policy.json" ]; then
+    printf '%-14s %s\n' RETAINED "user policy ${HOME}/.config/containers/policy.json"
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    remove_user_shell_init "$shell_init_file"
+    printf '%-14s %s\n' WOULD_REMOVE "directory ${USER_ROOT}"
+    return 0
+  fi
+
+  if ! running_containers="$("${USER_ROOT}/bin/podman" ps -q)"; then
+    die "cannot check for running Sarus Suite containers; installation was not removed"
+  fi
+  [ -z "$running_containers" ] || die "running Sarus Suite containers must be stopped before uninstalling"
+
+  remove_user_shell_init "$shell_init_file"
+  # Podman bind-mounts graphroot/overlay inside unshare. Remove namespace-owned
+  # entries there, but leave directories that are mountpoints for the host pass.
+  "${USER_ROOT}/bin/podman" unshare sh -c '
+    find "$1" -depth -mindepth 1 ! -type d -delete &&
+    find "$1" -depth -mindepth 1 -type d ! -path "$2/overlay" -empty -delete
+  ' sh "$USER_ROOT" "$podman_graphroot"
+  rm -rf -- "$USER_ROOT"
+  printf '%-14s %s\n' REMOVED "directory ${USER_ROOT}"
+}
+
 apply_user_payload() {
   local stage_root="$1"
   local report_dest="${USER_ROOT}/install/report.txt"
-  local report_tmp src relative dest mode action
+  local report_tmp src relative dest mode action dir
+  local user_policy="${HOME}/.config/containers/policy.json"
+  local system_policy=/etc/containers/policy.json
   local -a staged_files
 
   mapfile -t staged_files < <(find "$stage_root" -type f -print | sort)
@@ -431,6 +547,13 @@ apply_user_payload() {
     for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
       [ -z "$path" ] || [ -d "$path" ] || printf '%-14s %s\n' WOULD_CREATE "directory ${path}"
     done
+    if [ -e "$user_policy" ] || [ -L "$user_policy" ]; then
+      printf '%-14s %s\n' USING "existing user policy ${user_policy}"
+    elif [ -e "$system_policy" ] || [ -L "$system_policy" ]; then
+      printf '%-14s %s\n' USING "existing system policy ${system_policy}"
+    else
+      printf '%-14s %s\n' WOULD_CREATE "user policy ${user_policy} (image signatures not required)"
+    fi
     return 0
   fi
 
@@ -438,7 +561,10 @@ apply_user_payload() {
   report_tmp="$(mktemp "${TMPDIR:-/tmp}/sarus-suite-user-install-report.XXXXXX")"
   {
     printf 'Sarus Suite user install report\n'
-    printf 'bundle_root=%s\nuser_root=%s\n\nChanges:\n' "$BUNDLE_ROOT" "$USER_ROOT"
+    printf 'bundle_root=%s\n' "$BUNDLE_ROOT"
+    printf 'user_root=%s\n' "$USER_ROOT"
+    printf 'podman_graphroot=%s\n' "$PODMAN_GRAPHROOT"
+    printf 'parallax_store=%s\n\nChanges:\n' "$PARALLAX_STORE"
   } > "$report_tmp"
 
   for src in "${staged_files[@]}"; do
@@ -471,6 +597,18 @@ apply_user_payload() {
   for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
     [ -z "$path" ] || [ -d "$path" ] || install -d -m 0700 "$path"
   done
+  if [ -e "$user_policy" ] || [ -L "$user_policy" ]; then
+    printf '%-14s %s\n' USING "existing user policy ${user_policy}" >> "$report_tmp"
+  elif [ -e "$system_policy" ] || [ -L "$system_policy" ]; then
+    printf '%-14s %s\n' USING "existing system policy ${system_policy}" >> "$report_tmp"
+  else
+    check_parent_chain "$user_policy"
+    for dir in "${HOME}/.config" "${HOME}/.config/containers"; do
+      [ -d "$dir" ] || install -d -m 0700 "$dir"
+    done
+    install -m 0644 "${stage_root}/xdg/config/containers/policy.json" "$user_policy"
+    printf '%-14s %s\n' CREATED "user policy ${user_policy} (image signatures not required)" >> "$report_tmp"
+  fi
   install -m 0600 "$report_tmp" "$report_dest"
   rm -f "$report_tmp"
   cat "$report_dest"
@@ -539,7 +677,7 @@ DRY_RUN=0
 # Select exec mode (default: stage)
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    stage|apply|user) MODE="$1"; shift ;;
+    stage|apply|user|user-uninstall) MODE="$1"; shift ;;
   esac
 fi
 
@@ -565,7 +703,7 @@ while [ $# -gt 0 ]; do
 done
 
 # argument validation and required host commands
-[ -n "$BUNDLE_ROOT" ] || die "--bundle-root is required"
+[ "$MODE" = user-uninstall ] || [ -n "$BUNDLE_ROOT" ] || die "--bundle-root is required"
 [ "$MODE" != stage ] || [ -n "$OUTPUT_DIR" ] || die "--output-dir is required for stage"
 [ "$MODE" = stage ] || [ -z "$OUTPUT_DIR" ] || die "--output-dir is only valid for stage"
 require_cmd basename
@@ -589,7 +727,7 @@ USER_ROOT="$(strip_trailing_slash "$USER_ROOT")"
 REPORT_FILE="$(strip_trailing_slash "$REPORT_FILE")"
 if [ -n "$PODMAN_GRAPHROOT" ]; then PODMAN_GRAPHROOT="$(strip_trailing_slash "$PODMAN_GRAPHROOT")"; fi
 if [ -n "$PODMAN_RUNROOT" ]; then PODMAN_RUNROOT="$(strip_trailing_slash "$PODMAN_RUNROOT")"; fi
-require_absolute_path --bundle-root "$BUNDLE_ROOT"
+[ "$MODE" = user-uninstall ] || require_absolute_path --bundle-root "$BUNDLE_ROOT"
 if [ "$MODE" = stage ]; then
   require_absolute_path --output-dir "$OUTPUT_DIR"
   [ "$OUTPUT_DIR" != "/" ] || die "--output-dir cannot be the filesystem root"
@@ -607,6 +745,9 @@ if [ "$MODE" = user ]; then
   if [ "$PARALLAX_STORE_SET" -eq 0 ]; then
     PARALLAX_STORE="${USER_ROOT}/xdg/data/sarus-suite/parallax/ro-store"
   fi
+  if [ -z "$PODMAN_GRAPHROOT" ]; then
+    PODMAN_GRAPHROOT="${USER_ROOT}/xdg/data/containers/storage"
+  fi
   require_absolute_path --parallax-store "$PARALLAX_STORE"
   for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
     [ -n "$path" ] || continue
@@ -618,6 +759,24 @@ if [ "$MODE" = user ]; then
     auto|none) ;;
     *) require_absolute_path --shell-init "$SHELL_INIT" ;;
   esac
+elif [ "$MODE" = user-uninstall ]; then
+  [ "$(uname -s)" = Linux ] || die "user uninstallation is supported only on Linux"
+  [ "${EUID}" -ne 0 ] || die "user uninstallation must not run as root"
+  [ -n "${HOME:-}" ] || die "HOME is required for user uninstallation"
+  [ -z "$INSTALL_ROOT" ] || die "--install-root is not valid for user uninstallation"
+  [ "$REPORT_FILE" = /var/log/sarus-suite-install-report.txt ] || die "--report is not valid for user uninstallation"
+  require_absolute_path --user-root "$USER_ROOT"
+  [ "$USER_ROOT" != / ] || die "--user-root cannot be the filesystem root"
+  [ "$USER_ROOT" != "$HOME" ] || die "--user-root cannot be the home directory"
+  case "$SHELL_INIT" in
+    auto|none) ;;
+    *) require_absolute_path --shell-init "$SHELL_INIT" ;;
+  esac
+  [ "$PARALLAX_STORE_SET" -eq 0 ] || die "--parallax-store is not valid for user uninstallation"
+  [ -z "$PODMAN_GRAPHROOT" ] || die "--podman-graphroot is not valid for user uninstallation"
+  [ -z "$PODMAN_RUNROOT" ] || die "--podman-runroot is not valid for user uninstallation"
+  uninstall_user_payload
+  exit 0
 else
   [ "$USER_ROOT" = "${HOME:-}/.sarus-suite" ] || die "--user-root is only valid for user installation"
   [ "$SHELL_INIT" = auto ] || die "--shell-init is only valid for user installation"
@@ -676,7 +835,7 @@ if [ "$MODE" = user ]; then
     [ -x "$src" ] || die "bundle bin entry is not executable: ${src}"
     name="$(basename "$src")"
     case "$name" in
-      sarus-suite-shell|sarus-suite-system-install|sarus-suite-user-install) continue ;;
+      sarus-suite-shell|sarus-suite-system-install|sarus-suite-user-install|sarus-suite-user-uninstall) continue ;;
     esac
     contains_name "$name" "${IMPORT_BINARY_NAMES[@]}" && continue
     contains_name "$name" "${IMPORT_HOOK_NAMES[@]}" && continue
@@ -700,10 +859,12 @@ if [ "$MODE" = user ]; then
 
   ## Install launched and public command thin wrappers
   copy_file "${BUNDLE_ROOT}/libexec/sarus-suite/user-launch.sh" /libexec/sarus-suite/launch 0755
+  copy_file "${BUNDLE_ROOT}/libexec/sarus-suite/install.sh" /libexec/sarus-suite/install.sh 0755
   for name in sarusctl podman parallax sarus-suite-check; do
     [ -x "${BUNDLE_ROOT}/bin/${name}" ] || die "bundle public command not found: ${name}"
     write_user_command_wrapper "$(payload_path "/bin/${name}")" "$name"
   done
+  write_user_uninstall_wrapper "$(payload_path /bin/sarus-suite-user-uninstall)"
 
   ## Render the private bundle XDG
   render_user_template "${BUNDLE_ROOT}/etc/containers/containers.conf" "$(payload_path /xdg/config/containers/containers.conf)"
@@ -725,6 +886,10 @@ if [ "$MODE" = user ]; then
   copy_tree "${BUNDLE_ROOT}/examples" /share/examples 0644
   copy_tree "${BUNDLE_ROOT}/share" /share 0644
 
+  ## Resolve and validate user shell before recording installation metadata
+  shell_init_file="$(resolve_shell_init)"
+  validate_user_shell_init "$shell_init_file"
+
   ## Write environment metadata and install manifest
   manifest="$(payload_path /install/manifest.txt)"
   install -d -m 0755 "$(dirname "$manifest")"
@@ -741,8 +906,9 @@ if [ "$MODE" = user ]; then
     printf 'hook_dir=%s\n' "$USER_HOOK_DIR"
     printf 'config_home=%s\n' "$USER_CONFIG_HOME"
     printf 'state_dir=%s\n' "$USER_STATE_DIR"
+    printf 'shell_init=%s\n' "$shell_init_file"
     printf 'parallax_store=%s\n' "$PARALLAX_STORE"
-    printf 'podman_graphroot=%s\n' "${PODMAN_GRAPHROOT:-XDG default}"
+    printf 'podman_graphroot=%s\n' "$PODMAN_GRAPHROOT"
     printf 'podman_runroot=%s\n' "${PODMAN_RUNROOT:-XDG default}"
   } > "$manifest"
   for ((i = 0; i < ${#IMPORT_BINARY_NAMES[@]}; i++)); do
@@ -765,11 +931,6 @@ if [ "$MODE" = user ]; then
     die "staging path leaked into user installation"
   fi
 
-  ## Resolve and validate user shell
-  # Resolve the user shell
-  shell_init_file="$(resolve_shell_init)"
-  # Sanity checks to mod the user shell
-  validate_user_shell_init "$shell_init_file"
   # Apply the staging dir to the user root
   apply_user_payload "$OUTPUT_DIR"
   # Now we modify the shell startup
@@ -826,7 +987,7 @@ for src in "${BUNDLE_ROOT}/bin"/*; do
   [ -x "$src" ] || die "bundle bin entry is not executable: ${src}"
   name="$(basename "$src")"
   case "$name" in
-    sarus-suite-system-install|sarus-suite-user-install) continue ;;
+    sarus-suite-system-install|sarus-suite-user-install|sarus-suite-user-uninstall) continue ;;
   esac
   contains_name "$name" "${IMPORT_BINARY_NAMES[@]}" && continue
   contains_name "$name" "${IMPORT_HOOK_NAMES[@]}" && continue
