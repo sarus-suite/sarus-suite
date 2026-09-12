@@ -1,1 +1,1 @@
-image = "library/debian:12"
+image = "docker.io/library/debian:12"

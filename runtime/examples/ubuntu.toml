@@ -1,1 +1,1 @@
-image = "library/ubuntu:24.04"
+image = "docker.io/library/ubuntu:24.04"
