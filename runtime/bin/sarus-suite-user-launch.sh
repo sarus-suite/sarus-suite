@@ -82,6 +82,13 @@ export XDG_RUNTIME_DIR="${SARUS_SUITE_RUNTIME}"
 export TMPDIR="${SARUS_SUITE_RUNTIME}/tmp"
 
 export CONTAINERS_POLICY="${XDG_CONFIG_HOME}/containers/policy.json"
+if [ -z "${CONTAINERS_REGISTRIES_CONF:-}" ] &&
+   [ ! -e "${HOME}/.config/containers/registries.conf" ] &&
+   [ ! -L "${HOME}/.config/containers/registries.conf" ] &&
+   [ ! -e /etc/containers/registries.conf ] &&
+   [ ! -L /etc/containers/registries.conf ]; then
+  export CONTAINERS_REGISTRIES_CONF="${XDG_CONFIG_HOME}/containers/registries.conf"
+fi
 export PARALLAX_MP_CONFIG="${XDG_CONFIG_HOME}/parallax/parallax-mount.conf"
 export SARUSCTL_CONFIG_DIR="${XDG_CONFIG_HOME}/sarus-suite"
 export PATH="${SARUS_SUITE_BIN}:${PATH:-/usr/bin:/bin}"

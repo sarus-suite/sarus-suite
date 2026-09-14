@@ -114,6 +114,7 @@ fi
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-check" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-shell" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-user-install" ]
+[ -x "${RUNTIME_BIN_DIR}/sarus-suite-user-uninstall" ]
 [ -x "${RUNTIME_BIN_DIR}/sarus-suite-system-install" ]
 [ -x "${RUNTIME_LIBEXEC_DIR}/sarus-suite/install.sh" ]
 [ -x "${RUNTIME_LIBEXEC_DIR}/sarus-suite/user-launch.sh" ]

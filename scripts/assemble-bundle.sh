@@ -63,6 +63,7 @@ install_bin "${BWRAP_BIN}" bwrap
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-shell.sh" sarus-suite-shell
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-system-install.sh" sarus-suite-system-install
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-user-install.sh" sarus-suite-user-install
+install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-user-uninstall.sh" sarus-suite-user-uninstall
 install -d -m0755 "${RUNTIME_LIBEXEC_DIR}/sarus-suite"
 install -m0755 "${ROOT_DIR}/scripts/install.sh" "${RUNTIME_LIBEXEC_DIR}/sarus-suite/install.sh"
 install -m0755 "${ROOT_DIR}/runtime/bin/sarus-suite-user-launch.sh" "${RUNTIME_LIBEXEC_DIR}/sarus-suite/user-launch.sh"
