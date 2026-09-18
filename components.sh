@@ -75,7 +75,6 @@ SKYBOX_BUNDLE_DIR="${BUNDLE_ROOT}/usr/lib64/slurm"
 SKYBOX_SLURM_VERSIONS="${SKYBOX_SLURM_VERSIONS:-25.5.9 25.11.4 26.5.4}"
 
 PERFEXT_REPO="${PERFEXT_REPO:-https://github.com/sarus-suite/performance-extensions.git}"
-PERFEXT_REPO="${PERFEXT_REPO:-https://github.com/sarus-suite/performance-extensions.git}"
 PERFEXT_REF="${PERFEXT_REF:-main}"
 PERFEXT_SRC_DIR="${PERFEXT_SRC_DIR:-${SRC_DIR}/performance-extensions}"
 PERFEXT_DEVCONTAINER_CONFIG="${PERFEXT_DEVCONTAINER_CONFIG:-.devcontainer/devcontainer.json}"
