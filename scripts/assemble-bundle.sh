@@ -26,8 +26,24 @@ install_bin_if_present() {
   fi
 }
 
+install_multiple_skybox() {
+  if [ -z "${SKYBOX_SLURM_VERSIONS}" ]
+  then
+    return
+  fi
+
+  for SLURM_VERSION in $SKYBOX_SLURM_VERSIONS
+  do
+    SLURM_MAJOR_VERSION=$(echo $SLURM_VERSION | awk -F. '{printf "%02d.%02d\n",$1,$2}')
+    SKYBOX_LIB="${SKYBOX_LIB_NAME}-slurm-${SLURM_MAJOR_VERSION}.${SKYBOX_LIB_EXT}"
+    SKYBOX_BUILD_LIB="${SKYBOX_BUILD_DIR}/${SKYBOX_LIB}"
+    SKYBOX_BUNDLE_LIB="${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}"
+    install -Dm0755 "${SKYBOX_BUILD_LIB}" "${SKYBOX_BUNDLE_LIB}"
+  done
+}
+
 rm -rf "${OUT_DIR}"
-mkdir -p "${RUNTIME_BIN_DIR}" "${RUNTIME_HOOK_BIN_DIR}" "${RUNTIME_CONTAINERS_ETC_DIR}" "${RUNTIME_CONTAINERS_MODULES_DIR}" "${RUNTIME_CONTAINERS_HOOKS_DIR}" "${RUNTIME_PARALLAX_ETC_DIR}" "${RUNTIME_SARUS_SUITE_ETC_DIR}" "${RUNTIME_LICENSE_DIR}"
+mkdir -p "${RUNTIME_BIN_DIR}" "${RUNTIME_HOOK_BIN_DIR}" "${RUNTIME_CONTAINERS_ETC_DIR}" "${RUNTIME_CONTAINERS_MODULES_DIR}" "${RUNTIME_CONTAINERS_HOOKS_DIR}" "${RUNTIME_PARALLAX_ETC_DIR}" "${RUNTIME_SARUS_SUITE_ETC_DIR}" "${RUNTIME_LICENSE_DIR}" "${SKYBOX_BUNDLE_DIR}"
 
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/bin/podman" podman
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/bin/crun" crun
@@ -39,6 +55,7 @@ install_bin_if_present "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/rootlesspor
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/catatonit" catatonit
 install_bin "${PARALLAX_BIN}" parallax
 install_bin "${SARUSCTL_BIN}" sarusctl
+install_multiple_skybox
 install_bin "${PERFEXT_LDCACHE_HOOK_BIN}" ldcache_hook
 install_bin "${PERFEXT_MPS_HOOK_BIN}" mps_hook
 install_bin "${PERFEXT_PCE_HOOK_BIN}" pce_hook
