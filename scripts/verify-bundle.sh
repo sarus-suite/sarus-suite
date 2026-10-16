@@ -138,6 +138,8 @@ grep -Eq '^[[:space:]]*seccomp_profile[[:space:]]*= *".*seccomp\.json"' "${BUNDL
 [ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/40-pc-injection.json" ]
 [ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/50-mkhomedir.json" ]
 [ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/60-sethomevar.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/70-pmix.json" ]
+[ -f "${RUNTIME_CONTAINERS_HOOKS_DIR}/80-squashfs-mounts.json" ]
 [ -f "${RUNTIME_PARALLAX_ETC_DIR}/parallax-mount.conf" ]
 [ -f "${RUNTIME_SARUS_SUITE_ETC_DIR}/90-sarusctl.conf" ]
 [ -f "${BUNDLE_ROOT}/etc/system/containers/containers.conf" ]

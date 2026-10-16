@@ -62,12 +62,16 @@ install_bin "${PERFEXT_PCE_HOOK_BIN}" pce_hook
 install_bin "${PERFEXT_PC_INJECTION_HOOK_BIN}" pc_injection_hook
 install_bin "${PERFEXT_MKHOMEDIR_BIN}" mkhomedir
 install_bin "${PERFEXT_SETHOMEVAR_BIN}" sethomevar
+install_bin "${PERFEXT_PMIX_HOOK_BIN}" pmix_hook
+install_bin "${PERFEXT_SQUASHFS_MOUNTS_BIN}" squashfs_mounts
 install -Dm0755 "${PERFEXT_LDCACHE_HOOK_BIN}" "${RUNTIME_HOOK_BIN_DIR}/ldcache_hook"
 install -Dm0755 "${PERFEXT_MPS_HOOK_BIN}" "${RUNTIME_HOOK_BIN_DIR}/mps_hook"
 install -Dm0755 "${PERFEXT_PCE_HOOK_BIN}" "${RUNTIME_HOOK_BIN_DIR}/pce_hook"
 install -Dm0755 "${PERFEXT_PC_INJECTION_HOOK_BIN}" "${RUNTIME_HOOK_BIN_DIR}/pc_injection_hook"
 install -Dm0755 "${PERFEXT_MKHOMEDIR_BIN}" "${RUNTIME_HOOK_BIN_DIR}/mkhomedir"
 install -Dm0755 "${PERFEXT_SETHOMEVAR_BIN}" "${RUNTIME_HOOK_BIN_DIR}/sethomevar"
+install -Dm0755 "${PERFEXT_PMIX_HOOK_BIN}" "${RUNTIME_HOOK_BIN_DIR}/pmix_hook"
+install -Dm0755 "${PERFEXT_SQUASHFS_MOUNTS_BIN}" "${RUNTIME_HOOK_BIN_DIR}/squashfs_mounts"
 install_bin "${ROOT_DIR}/runtime/support/parallax-mount-program.sh" parallax-mount-program
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-check.sh" sarus-suite-check
 install_bin "${MKSQUASHFS_BIN}" mksquashfs
