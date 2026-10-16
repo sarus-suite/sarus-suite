@@ -135,6 +135,7 @@ main() {
   require_file "${containers_config_dir}/oci/hooks.d/40-pc-injection.json"
   require_file "${containers_config_dir}/oci/hooks.d/50-mkhomedir.json"
   require_file "${containers_config_dir}/oci/hooks.d/60-sethomevar.json"
+  require_file "${containers_config_dir}/oci/hooks.d/70-pmix.json"
   require_file "${PARALLAX_MP_CONFIG}"
   require_file "${sarusctl_config_file}"
   require_executable "${SARUS_SUITE_HOOK_BIN}/ldcache_hook"
@@ -143,12 +144,15 @@ main() {
   require_executable "${SARUS_SUITE_HOOK_BIN}/pc_injection_hook"
   require_executable "${SARUS_SUITE_HOOK_BIN}/mkhomedir"
   require_executable "${SARUS_SUITE_HOOK_BIN}/sethomevar"
+  require_executable "${SARUS_SUITE_HOOK_BIN}/pmix_hook"
   grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/ldcache_hook\"" "${containers_config_dir}/oci/hooks.d/10-ldcache.json" || die "ldcache hook config does not reference ${SARUS_SUITE_HOOK_BIN}/ldcache_hook"
   grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/mps_hook\"" "${containers_config_dir}/oci/hooks.d/20-mps.json" || die "mps hook config does not reference ${SARUS_SUITE_HOOK_BIN}/mps_hook"
   grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pce_hook\"" "${containers_config_dir}/oci/hooks.d/30-pce.json" || die "pce hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pce_hook"
   grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pc_injection_hook\"" "${containers_config_dir}/oci/hooks.d/40-pc-injection.json" || die "pc-injection hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pc_injection_hook"
   grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/mkhomedir\"" "${containers_config_dir}/oci/hooks.d/50-mkhomedir.json" || die "mkhomedir hook config does not reference ${SARUS_SUITE_HOOK_BIN}/mkhomedir"
   grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/sethomevar\"" "${containers_config_dir}/oci/hooks.d/60-sethomevar.json" || die "sethomevar hook config does not reference ${SARUS_SUITE_HOOK_BIN}/sethomevar"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/pmix_hook\"" "${containers_config_dir}/oci/hooks.d/70-pmix.json" || die "pmix hook config does not reference ${SARUS_SUITE_HOOK_BIN}/pmix_hook"
+  grep -Fq "\"path\": \"${SARUS_SUITE_HOOK_BIN}/squashfs_mounts\"" "${containers_config_dir}/oci/hooks.d/80-squashfs-mounts.json" || die "pmix hook config does not reference ${SARUS_SUITE_HOOK_BIN}/squashfs_mounts"
 
   check_cmd_path podman
   check_cmd_path parallax
