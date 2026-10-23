@@ -188,6 +188,7 @@ cluster_tooling_sha=${cluster_tooling_sha}
 perfext_repo=${PERFEXT_REPO}
 perfext_ref=${PERFEXT_REF}
 perfext_sha=${perfext_sha}
+skybox_slurm_versions=${SKYBOX_SLURM_VERSIONS}
 rootlessport_bundled=$(if [ -x "${RUNTIME_BIN_DIR}/rootlessport" ]; then printf 'true'; else printf 'false'; fi)
 podman_repo=$(read_podman_build_metadata podman repo)
 podman_ref=$(read_podman_build_metadata podman ref)

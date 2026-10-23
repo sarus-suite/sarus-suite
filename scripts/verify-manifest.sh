@@ -57,6 +57,7 @@ for component in "${source_components[@]}"; do
 done
 
 require_value containers_common_ref
+require_value skybox_slurm_versions
 podman_linkage="$(manifest_value podman_linkage)"
 [[ "${podman_linkage}" =~ ^(static|glibc)$ ]] || {
   printf 'error: invalid Podman linkage: %s\n' "${podman_linkage}" >&2
