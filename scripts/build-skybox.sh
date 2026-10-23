@@ -156,8 +156,9 @@ build_single_skybox() {
   local SLURM_VERSION="$1"	
   [ -n "${SLURM_VERSION}" ] || die "Missing SLURM_VERSION"
 
-  SLURM_MAJOR_VERSION=$(echo $SLURM_VERSION | awk -F. '{printf "%02d.%02d\n",$1,$2}')
-  SKYBOX_LIB="${SKYBOX_LIB_NAME}-slurm-${SLURM_MAJOR_VERSION}.${SKYBOX_LIB_EXT}"
+  SKYBOX_LIB="$(skybox_slurm_lib_name "${SLURM_VERSION}")" || die "invalid Slurm version: ${SLURM_VERSION}"
+  SLURM_MAJOR_VERSION="${SKYBOX_LIB#${SKYBOX_LIB_NAME}-slurm-}"
+  SLURM_MAJOR_VERSION="${SLURM_MAJOR_VERSION%\.${SKYBOX_LIB_EXT}}"
   SKYBOX_BUILD_LIB="${SKYBOX_BUILD_DIR}/${SKYBOX_LIB}"
   SKYBOX_OUT_REL="${SKYBOX_OUT_REL_DIR}/${SKYBOX_LIB}"
   export CARGO_TARGET_DIR="target.slurm-${SLURM_MAJOR_VERSION}"
@@ -235,6 +236,8 @@ BUILD
   [ -x "${SKYBOX_BUILD_LIB}" ] || die "missing skybox library: ${SKYBOX_BUILD_LIB}"
   verify_linux_binary_arch "${SKYBOX_BUILD_LIB}"
 }
+
+validate_skybox_slurm_versions
 
 for VERSION in ${SKYBOX_SLURM_VERSIONS}
 do

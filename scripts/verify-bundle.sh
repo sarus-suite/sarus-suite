@@ -100,9 +100,10 @@ verify_static_elf "${RUNTIME_BIN_DIR}/fuse-overlayfs"
 verify_static_elf "${RUNTIME_BIN_DIR}/fusermount3"
 verify_static_elf "${RUNTIME_BIN_DIR}/bwrap"
 
+validate_skybox_slurm_versions
+
 for SLURM_VERSION in ${SKYBOX_SLURM_VERSIONS}; do
-  SLURM_MAJOR_VERSION="$(printf '%s\n' "${SLURM_VERSION}" | awk -F. '{printf "%02d.%02d\n",$1,$2}')"
-  SKYBOX_LIB="${SKYBOX_LIB_NAME}-slurm-${SLURM_MAJOR_VERSION}.${SKYBOX_LIB_EXT}"
+  SKYBOX_LIB="$(skybox_slurm_lib_name "${SLURM_VERSION}")"
   [ -f "${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}" ] || {
     printf 'error: expected Skybox Slurm plugin: %s\n' "${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}" >&2
     exit 1

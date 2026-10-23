@@ -24,6 +24,40 @@ require_cmd() {
   }
 }
 
+skybox_slurm_lib_name() {
+  local version="$1"
+  local major minor
+
+  [[ "${version}" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]] || {
+    printf 'error: invalid Slurm version: %s\n' "${version}" >&2
+    return 1
+  }
+
+  major=$((10#${BASH_REMATCH[1]}))
+  minor=$((10#${BASH_REMATCH[2]}))
+  printf '%s-slurm-%02d.%02d.%s\n' \
+    "${SKYBOX_LIB_NAME}" "${major}" "${minor}" "${SKYBOX_LIB_EXT}"
+}
+
+validate_skybox_slurm_versions() {
+  local version
+  local lib_name
+  local seen
+  local seen_lib_names=()
+
+  for version in ${SKYBOX_SLURM_VERSIONS}; do
+    lib_name="$(skybox_slurm_lib_name "${version}")" || return 1
+    for seen in "${seen_lib_names[@]}"; do
+      if [ "${seen}" = "${lib_name}" ]; then
+        printf 'error: Slurm versions produce the same Skybox plugin: %s\n' \
+          "${lib_name}" >&2
+        return 1
+      fi
+    done
+    seen_lib_names+=("${lib_name}")
+  done
+}
+
 BUNDLE_NAME="${BUNDLE_NAME:-sarus-suite}"
 BUNDLE_VERSION="${BUNDLE_VERSION:-dev}"
 TARGET_ARCH="${TARGET_ARCH:-$(normalize_arch)}"
