@@ -975,6 +975,7 @@ fi
 BIN_DIR="${PREFIX}/bin"
 HOOK_DIR="${PREFIX}/libexec/oci/hooks"
 SHARE_DIR="${PREFIX}/share"
+SLURM_PLUGIN_DIR=/usr/lib64/slurm
 src=""
 name=""
 mode=""
@@ -1027,6 +1028,10 @@ copy_file "${BUNDLE_ROOT}/etc/containers/seccomp.json" /etc/containers/seccomp.j
 copy_file "${BUNDLE_ROOT}/etc/containers/containers.conf.modules/hpc" /etc/containers/containers.conf.modules/hpc 0644
 copy_tree "${BUNDLE_ROOT}/etc/containers/registries.d" /etc/containers/registries.d 0644
 copy_tree "${BUNDLE_ROOT}/etc/cdi" /etc/cdi 0644
+copy_tree \
+  "${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}" \
+  "${SLURM_PLUGIN_DIR}" \
+  0755
 for src in "${BUNDLE_ROOT}/etc/containers/oci/hooks.d"/*; do
   [ -f "$src" ] || continue
   render_template "$src" "$(payload_path "/etc/containers/oci/hooks.d/$(basename "$src")")"
