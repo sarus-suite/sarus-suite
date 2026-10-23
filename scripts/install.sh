@@ -1028,6 +1028,8 @@ copy_file "${BUNDLE_ROOT}/etc/containers/seccomp.json" /etc/containers/seccomp.j
 copy_file "${BUNDLE_ROOT}/etc/containers/containers.conf.modules/hpc" /etc/containers/containers.conf.modules/hpc 0644
 copy_tree "${BUNDLE_ROOT}/etc/containers/registries.d" /etc/containers/registries.d 0644
 copy_tree "${BUNDLE_ROOT}/etc/cdi" /etc/cdi 0644
+skybox_plugins=("${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}"/libskybox-slurm-*.so)
+[ -f "${skybox_plugins[0]}" ] || die "bundle contains no Skybox Slurm plugins: ${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}"
 copy_tree \
   "${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}" \
   "${SLURM_PLUGIN_DIR}" \
