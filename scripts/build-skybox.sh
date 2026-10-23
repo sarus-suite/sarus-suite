@@ -22,13 +22,13 @@ resolve_devcontainer_config() {
     ".devcontainer/skybox/devcontainer.json" 
   do
     [ -n "${candidate}" ] || continue
-    if [ -f "${SKYBOX_SRC_DIR}/${candidate}" ]; then
+    if [ -f "${CLUSTER_TOOLING_SRC_DIR}/${candidate}" ]; then
       printf '%s\n' "${candidate}"
       return 0
     fi
   done
 
-  die "no skybox devcontainer config found under ${SKYBOX_SRC_DIR}"
+  die "no skybox devcontainer config found under ${CLUSTER_TOOLING_SRC_DIR}"
 }
 
 resolve_target_triple() {
@@ -112,7 +112,7 @@ repair_stale_podman_volumes() {
 
 prepare_devcontainer_config() {
   local config_rel="$1"
-  local config_path="${SKYBOX_SRC_DIR}/${config_rel}"
+  local config_path="${CLUSTER_TOOLING_SRC_DIR}/${config_rel}"
   local config_dir
   local generated_dir
   local generated_path
@@ -162,7 +162,7 @@ build_single_skybox() {
   SKYBOX_OUT_REL="${SKYBOX_OUT_REL_DIR}/${SKYBOX_LIB}"
   export CARGO_TARGET_DIR="target.slurm-${SLURM_MAJOR_VERSION}"
 
-  [ -d "${SKYBOX_SRC_DIR}" ] || die "cluster-tooling source directory not found: ${SKYBOX_SRC_DIR}"
+  [ -d "${CLUSTER_TOOLING_SRC_DIR}" ] || die "cluster-tooling source directory not found: ${CLUSTER_TOOLING_SRC_DIR}"
   mkdir -p "${BUILD_DIR}"
 
   #if [ -n "${SKYBOX_PREBUILT_LIB}" ]; then
@@ -174,7 +174,7 @@ build_single_skybox() {
 
   repair_stale_podman_volumes
 
-  if [ ! -d "${SKYBOX_SRC_DIR}/.git" ]; then
+  if [ ! -d "${CLUSTER_TOOLING_SRC_DIR}/.git" ]; then
     "${ROOT_DIR}/scripts/fetch-components.sh"
   fi
 
@@ -204,23 +204,23 @@ BUILD
 
   case "${SKYBOX_BUILD_MODE}" in
     devcontainer)
-      command -v devcontainer >/dev/null 2>&1 || die "need devcontainer CLI to build sarusctl"
+      command -v devcontainer >/dev/null 2>&1 || die "need devcontainer CLI to build skybox"
       (
-        cd "${SKYBOX_SRC_DIR}"
+        cd "${CLUSTER_TOOLING_SRC_DIR}"
         "${devcontainer_env[@]}" devcontainer up \
           --remove-existing-container \
           --workspace-folder . \
           --config "${devcontainer_config_path}" >/dev/null
         cd /
         "${devcontainer_env[@]}" devcontainer exec \
-          --workspace-folder "${SKYBOX_SRC_DIR}" \
+          --workspace-folder "${CLUSTER_TOOLING_SRC_DIR}" \
           --config "${devcontainer_config_path}" \
-          bash -lc "cd /workspaces/\$(basename \"${SKYBOX_SRC_DIR}\") && ${build_cmd}"
+          bash -lc "cd /workspaces/\$(basename \"${CLUSTER_TOOLING_SRC_DIR}\") && ${build_cmd}"
       )
       ;;
     host)
       (
-        cd "${SKYBOX_SRC_DIR}"
+        cd "${CLUSTER_TOOLING_SRC_DIR}"
         bash -lc "${build_cmd}"
       )
       ;;
@@ -231,7 +231,7 @@ BUILD
 
   mkdir -p ${SKYBOX_BUILD_DIR}
 
-  install -Dm0755 "${SKYBOX_SRC_DIR}/${SKYBOX_OUT_REL}" "${SKYBOX_BUILD_LIB}"
+  install -Dm0755 "${CLUSTER_TOOLING_SRC_DIR}/${SKYBOX_OUT_REL}" "${SKYBOX_BUILD_LIB}"
   [ -x "${SKYBOX_BUILD_LIB}" ] || die "missing skybox library: ${SKYBOX_BUILD_LIB}"
   verify_linux_binary_arch "${SKYBOX_BUILD_LIB}"
 }

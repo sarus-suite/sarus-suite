@@ -145,9 +145,9 @@ if [ -d "${PARALLAX_SRC_DIR}/.git" ]; then
   parallax_sha="$(git -C "${PARALLAX_SRC_DIR}" rev-parse HEAD)"
 fi
 
-sarusctl_sha='unknown'
-if [ -d "${SARUSCTL_SRC_DIR}/.git" ]; then
-  sarusctl_sha="$(git -C "${SARUSCTL_SRC_DIR}" rev-parse HEAD)"
+cluster_tooling_sha='unknown'
+if [ -d "${CLUSTER_TOOLING_SRC_DIR}/.git" ]; then
+  cluster_tooling_sha="$(git -C "${CLUSTER_TOOLING_SRC_DIR}" rev-parse HEAD)"
 fi
 
 perfext_sha='unknown'
@@ -181,10 +181,10 @@ target_arch=${TARGET_ARCH}
 parallax_repo=${PARALLAX_REPO}
 parallax_ref=${PARALLAX_REF}
 parallax_sha=${parallax_sha}
-sarusctl_repo=${SARUSCTL_REPO}
-sarusctl_ref=${SARUSCTL_REF}
-sarusctl_src_dir=${SARUSCTL_SRC_DIR}
-sarusctl_sha=${sarusctl_sha}
+cluster_tooling_repo=${CLUSTER_TOOLING_REPO}
+cluster_tooling_ref=${CLUSTER_TOOLING_REF}
+cluster_tooling_src_dir=${CLUSTER_TOOLING_SRC_DIR}
+cluster_tooling_sha=${cluster_tooling_sha}
 perfext_repo=${PERFEXT_REPO}
 perfext_ref=${PERFEXT_REF}
 perfext_sha=${perfext_sha}

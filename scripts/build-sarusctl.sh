@@ -24,13 +24,13 @@ resolve_devcontainer_config() {
     ".devcontainer/opensuse/devcontainer.json"
   do
     [ -n "${candidate}" ] || continue
-    if [ -f "${SARUSCTL_SRC_DIR}/${candidate}" ]; then
+    if [ -f "${CLUSTER_TOOLING_SRC_DIR}/${candidate}" ]; then
       printf '%s\n' "${candidate}"
       return 0
     fi
   done
 
-  die "no sarusctl devcontainer config found under ${SARUSCTL_SRC_DIR}"
+  die "no sarusctl devcontainer config found under ${CLUSTER_TOOLING_SRC_DIR}"
 }
 
 resolve_target_triple() {
@@ -114,7 +114,7 @@ repair_stale_podman_volumes() {
 
 prepare_devcontainer_config() {
   local config_rel="$1"
-  local config_path="${SARUSCTL_SRC_DIR}/${config_rel}"
+  local config_path="${CLUSTER_TOOLING_SRC_DIR}/${config_rel}"
   local config_dir
   local generated_dir
   local generated_path
@@ -154,7 +154,7 @@ verify_linux_binary_arch() {
   esac
 }
 
-[ -d "${SARUSCTL_SRC_DIR}" ] || die "cluster-tooling source directory not found: ${SARUSCTL_SRC_DIR}"
+[ -d "${CLUSTER_TOOLING_SRC_DIR}" ] || die "cluster-tooling source directory not found: ${CLUSTER_TOOLING_SRC_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 if [ -n "${SARUSCTL_PREBUILT_BIN}" ]; then
@@ -166,7 +166,7 @@ fi
 
 repair_stale_podman_volumes
 
-if [ ! -d "${SARUSCTL_SRC_DIR}/.git" ]; then
+if [ ! -d "${CLUSTER_TOOLING_SRC_DIR}/.git" ]; then
   "${ROOT_DIR}/scripts/fetch-components.sh"
 fi
 
@@ -198,21 +198,21 @@ case "${SARUSCTL_BUILD_MODE}" in
   devcontainer)
     command -v devcontainer >/dev/null 2>&1 || die "need devcontainer CLI to build sarusctl"
     (
-      cd "${SARUSCTL_SRC_DIR}"
+      cd "${CLUSTER_TOOLING_SRC_DIR}"
       "${devcontainer_env[@]}" devcontainer up \
         --remove-existing-container \
         --workspace-folder . \
         --config "${devcontainer_config_path}" >/dev/null
       cd /
       "${devcontainer_env[@]}" devcontainer exec \
-        --workspace-folder "${SARUSCTL_SRC_DIR}" \
+        --workspace-folder "${CLUSTER_TOOLING_SRC_DIR}" \
         --config "${devcontainer_config_path}" \
-        bash -lc "cd /workspaces/\$(basename \"${SARUSCTL_SRC_DIR}\") && ${build_cmd}"
+        bash -lc "cd /workspaces/\$(basename \"${CLUSTER_TOOLING_SRC_DIR}\") && ${build_cmd}"
     )
     ;;
   host)
     (
-      cd "${SARUSCTL_SRC_DIR}"
+      cd "${CLUSTER_TOOLING_SRC_DIR}"
       bash -lc "${build_cmd}"
     )
     ;;
@@ -221,6 +221,6 @@ case "${SARUSCTL_BUILD_MODE}" in
     ;;
 esac
 
-install -Dm0755 "${SARUSCTL_SRC_DIR}/${SARUSCTL_OUT_REL}" "${SARUSCTL_BIN}"
+install -Dm0755 "${CLUSTER_TOOLING_SRC_DIR}/${SARUSCTL_OUT_REL}" "${SARUSCTL_BIN}"
 [ -x "${SARUSCTL_BIN}" ] || die "missing sarusctl binary: ${SARUSCTL_BIN}"
 verify_linux_binary_arch "${SARUSCTL_BIN}"
