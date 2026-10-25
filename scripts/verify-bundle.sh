@@ -132,9 +132,7 @@ verify_static_elf "${RUNTIME_BIN_DIR}/fuse-overlayfs"
 verify_static_elf "${RUNTIME_BIN_DIR}/fusermount3"
 verify_static_elf "${RUNTIME_BIN_DIR}/bwrap"
 
-[
-  -f "${RUNTIME_MANIFEST}"
-] || {
+[ -f "${RUNTIME_MANIFEST}" ] || {
   printf 'error: bundle manifest not found: %s\n' "${RUNTIME_MANIFEST}" >&2
   exit 1
 }
