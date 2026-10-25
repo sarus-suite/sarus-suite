@@ -17,6 +17,38 @@ sha256_file() {
   fi
 }
 
+manifest_value() {
+  local key="$1"
+  sed -n "s/^${key}=//p" "${RUNTIME_MANIFEST}"
+}
+
+verify_skybox_arch() {
+  local path="$1"
+  local info
+
+  [ -f "${path}" ] || {
+    printf 'error: expected Skybox plugin: %s\n' "${path}" >&2
+    exit 1
+  }
+  command -v file >/dev/null 2>&1 || return 0
+
+  info="$(file "${path}")"
+  case "${TARGET_ARCH}" in
+    amd64)
+      printf '%s\n' "${info}" | grep -Eq 'ELF .*x86-64|ELF .*x86_64' || {
+        printf 'error: Skybox plugin does not match TARGET_ARCH=%s: %s\n' "${TARGET_ARCH}" "${info}" >&2
+        exit 1
+      }
+      ;;
+    arm64)
+      printf '%s\n' "${info}" | grep -Eq 'ELF .*ARM aarch64|ELF .*arm64' || {
+        printf 'error: Skybox plugin does not match TARGET_ARCH=%s: %s\n' "${TARGET_ARCH}" "${info}" >&2
+        exit 1
+      }
+      ;;
+  esac
+}
+
 verify_static_elf() {
   local path="$1"
 
@@ -100,12 +132,47 @@ verify_static_elf "${RUNTIME_BIN_DIR}/fuse-overlayfs"
 verify_static_elf "${RUNTIME_BIN_DIR}/fusermount3"
 verify_static_elf "${RUNTIME_BIN_DIR}/bwrap"
 
+[
+  -f "${RUNTIME_MANIFEST}"
+] || {
+  printf 'error: bundle manifest not found: %s\n' "${RUNTIME_MANIFEST}" >&2
+  exit 1
+}
+manifest_target_arch="$(manifest_value target_arch)"
+case "${manifest_target_arch}" in
+  amd64|arm64) TARGET_ARCH="${manifest_target_arch}" ;;
+  *)
+    printf 'error: invalid target architecture in manifest: %s\n' "${manifest_target_arch}" >&2
+    exit 1
+    ;;
+esac
+manifest_skybox_versions="$(manifest_value skybox_slurm_versions)"
+[ -n "${manifest_skybox_versions}" ] || {
+  printf 'error: manifest field is missing or empty: skybox_slurm_versions\n' >&2
+  exit 1
+}
+SKYBOX_SLURM_VERSIONS="${manifest_skybox_versions}"
 validate_skybox_slurm_versions
 
+expected_skybox_libs=()
 for SLURM_VERSION in ${SKYBOX_SLURM_VERSIONS}; do
   SKYBOX_LIB="$(skybox_slurm_lib_name "${SLURM_VERSION}")"
-  [ -f "${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}" ] || {
-    printf 'error: expected Skybox Slurm plugin: %s\n' "${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}" >&2
+  expected_skybox_libs+=("${SKYBOX_LIB}")
+  verify_skybox_arch "${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}"
+done
+
+for skybox_path in "${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB_NAME}-slurm-"*."${SKYBOX_LIB_EXT}"; do
+  [ -e "${skybox_path}" ] || continue
+  skybox_file="${skybox_path##*/}"
+  expected=0
+  for expected_skybox_lib in "${expected_skybox_libs[@]}"; do
+    if [ "${skybox_file}" = "${expected_skybox_lib}" ]; then
+      expected=1
+      break
+    fi
+  done
+  [ "${expected}" -eq 1 ] || {
+    printf 'error: unexpected Skybox Slurm plugin: %s\n' "${skybox_path}" >&2
     exit 1
   }
 done
