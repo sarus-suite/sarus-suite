@@ -88,9 +88,7 @@ PARALLAX_BIN="${PARALLAX_BIN:-${PARALLAX_SRC_DIR}/${PARALLAX_OUT_REL}}"
 PARALLAX_MOUNT_PROGRAM_REL="${PARALLAX_MOUNT_PROGRAM_REL:-scripts/parallax-mount-program.sh}"
 
 CLUSTER_TOOLING_REPO="${CLUSTER_TOOLING_REPO:-https://github.com/sarus-suite/cluster-tooling.git}"
-# Use the cluster-tooling branch that passes Raster's conmon_path explicitly
-# to Podman, which is required when Skybox runs under slurmstepd.
-CLUSTER_TOOLING_REF="${CLUSTER_TOOLING_REF:-sarusctl-parallax-params}"
+CLUSTER_TOOLING_REF="${CLUSTER_TOOLING_REF:-main}"
 CLUSTER_TOOLING_SRC_DIR="${CLUSTER_TOOLING_SRC_DIR:-${SRC_DIR}/cluster-tooling}"
 SARUSCTL_DEVCONTAINER_CONFIG="${SARUSCTL_DEVCONTAINER_CONFIG:-.devcontainer/alpine/devcontainer.json}"
 SARUSCTL_BUILD_MODE="${SARUSCTL_BUILD_MODE:-devcontainer}"
