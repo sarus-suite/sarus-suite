@@ -173,6 +173,10 @@ fi
 devcontainer_config="$(resolve_devcontainer_config)"
 devcontainer_config_path="$(prepare_devcontainer_config "${devcontainer_config}")"
 target_triple="$(resolve_target_triple)"
+# Keep Rust artifacts off the Docker Desktop workspace bind mount.  Cargo can
+# otherwise observe incomplete dependency artifacts while parallel rustc
+# processes publish them through the cached mount.
+cargo_target_dir="/tmp/sarus-suite-cargo-target-${TARGET_ARCH}-$$"
 devcontainer_uid="${SARUSCTL_DEVCONTAINER_UID:-$(id -u)}"
 devcontainer_gid="${SARUSCTL_DEVCONTAINER_GID:-1000}"
 if docker_cli_is_podman; then
@@ -188,9 +192,11 @@ devcontainer_env=(
 build_cmd=$(cat <<BUILD
 set -euo pipefail
 mkdir -p dist
+export CARGO_TARGET_DIR="${cargo_target_dir}"
+trap 'rm -rf -- "\${CARGO_TARGET_DIR}"' EXIT
 cargo build --locked -p sarusctl --release --target "${target_triple}"
 cargo test --locked -p sarusctl --test cli --target "${target_triple}"
-cp -f "\${CARGO_TARGET_DIR:-target}/${target_triple}/release/sarusctl" "${SARUSCTL_OUT_REL}"
+cp -f "\${CARGO_TARGET_DIR}/${target_triple}/release/sarusctl" "${SARUSCTL_OUT_REL}"
 BUILD
 )
 

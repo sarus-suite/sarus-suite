@@ -258,7 +258,7 @@ render_template() {
     -e 's|@@SARUS_SUITE_PARALLAX_TMPDIR_LINE@@||g' \
     -e 's|@@SARUS_SUITE_PARALLAX_LOGFILE_LINE@@||g' \
     -e 's|@@SARUS_SUITE_PARALLAX_MP_LOGFILE_LINE@@||g' \
-    -e 's|@@SARUS_SUITE_PODMAN_TMP_PATH_LINE@@||g' \
+    -e 's|@@SARUS_SUITE_PODMAN_TMP_PATH_LINE@@|podman_tmp_path = "/var/tmp"|g' \
     "$src" > "$dest"
   chmod 0644 "$dest"
 }
