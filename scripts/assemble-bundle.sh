@@ -26,8 +26,25 @@ install_bin_if_present() {
   fi
 }
 
+install_multiple_skybox() {
+  if [ -z "${SKYBOX_SLURM_VERSIONS}" ]
+  then
+    return
+  fi
+
+  for SLURM_VERSION in $SKYBOX_SLURM_VERSIONS
+  do
+    SKYBOX_LIB="$(skybox_slurm_lib_name "${SLURM_VERSION}")"
+    SKYBOX_BUILD_LIB="${SKYBOX_BUILD_DIR}/${SKYBOX_LIB}"
+    SKYBOX_BUNDLE_LIB="${SKYBOX_BUNDLE_DIR}/${SKYBOX_LIB}"
+    install -Dm0755 "${SKYBOX_BUILD_LIB}" "${SKYBOX_BUNDLE_LIB}"
+  done
+}
+
+validate_skybox_slurm_versions
+
 rm -rf "${OUT_DIR}"
-mkdir -p "${RUNTIME_BIN_DIR}" "${RUNTIME_HOOK_BIN_DIR}" "${RUNTIME_CONTAINERS_ETC_DIR}" "${RUNTIME_CONTAINERS_MODULES_DIR}" "${RUNTIME_CONTAINERS_HOOKS_DIR}" "${RUNTIME_PARALLAX_ETC_DIR}" "${RUNTIME_SARUS_SUITE_ETC_DIR}" "${RUNTIME_LICENSE_DIR}"
+mkdir -p "${RUNTIME_BIN_DIR}" "${RUNTIME_HOOK_BIN_DIR}" "${RUNTIME_CONTAINERS_ETC_DIR}" "${RUNTIME_CONTAINERS_MODULES_DIR}" "${RUNTIME_CONTAINERS_HOOKS_DIR}" "${RUNTIME_PARALLAX_ETC_DIR}" "${RUNTIME_SARUS_SUITE_ETC_DIR}" "${RUNTIME_LICENSE_DIR}" "${SKYBOX_BUNDLE_DIR}"
 
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/bin/podman" podman
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/bin/crun" crun
@@ -39,6 +56,7 @@ install_bin_if_present "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/rootlesspor
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/catatonit" catatonit
 install_bin "${PARALLAX_BIN}" parallax
 install_bin "${SARUSCTL_BIN}" sarusctl
+install_multiple_skybox
 install_bin "${PERFEXT_LDCACHE_HOOK_BIN}" ldcache_hook
 install_bin "${PERFEXT_MPS_HOOK_BIN}" mps_hook
 install_bin "${PERFEXT_PCE_HOOK_BIN}" pce_hook
@@ -128,9 +146,9 @@ if [ -d "${PARALLAX_SRC_DIR}/.git" ]; then
   parallax_sha="$(git -C "${PARALLAX_SRC_DIR}" rev-parse HEAD)"
 fi
 
-sarusctl_sha='unknown'
-if [ -d "${SARUSCTL_SRC_DIR}/.git" ]; then
-  sarusctl_sha="$(git -C "${SARUSCTL_SRC_DIR}" rev-parse HEAD)"
+cluster_tooling_sha='unknown'
+if [ -d "${CLUSTER_TOOLING_SRC_DIR}/.git" ]; then
+  cluster_tooling_sha="$(git -C "${CLUSTER_TOOLING_SRC_DIR}" rev-parse HEAD)"
 fi
 
 perfext_sha='unknown'
@@ -164,13 +182,14 @@ target_arch=${TARGET_ARCH}
 parallax_repo=${PARALLAX_REPO}
 parallax_ref=${PARALLAX_REF}
 parallax_sha=${parallax_sha}
-sarusctl_repo=${SARUSCTL_REPO}
-sarusctl_ref=${SARUSCTL_REF}
-sarusctl_src_dir=${SARUSCTL_SRC_DIR}
-sarusctl_sha=${sarusctl_sha}
+cluster_tooling_repo=${CLUSTER_TOOLING_REPO}
+cluster_tooling_ref=${CLUSTER_TOOLING_REF}
+cluster_tooling_src_dir=${CLUSTER_TOOLING_SRC_DIR}
+cluster_tooling_sha=${cluster_tooling_sha}
 perfext_repo=${PERFEXT_REPO}
 perfext_ref=${PERFEXT_REF}
 perfext_sha=${perfext_sha}
+skybox_slurm_versions=${SKYBOX_SLURM_VERSIONS}
 rootlessport_bundled=$(if [ -x "${RUNTIME_BIN_DIR}/rootlessport" ]; then printf 'true'; else printf 'false'; fi)
 podman_repo=$(read_podman_build_metadata podman repo)
 podman_ref=$(read_podman_build_metadata podman ref)

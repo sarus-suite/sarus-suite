@@ -24,6 +24,40 @@ require_cmd() {
   }
 }
 
+skybox_slurm_lib_name() {
+  local version="$1"
+  local major minor
+
+  [[ "${version}" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]] || {
+    printf 'error: invalid Slurm version: %s\n' "${version}" >&2
+    return 1
+  }
+
+  major=$((10#${BASH_REMATCH[1]}))
+  minor=$((10#${BASH_REMATCH[2]}))
+  printf '%s-slurm-%02d.%02d.%s\n' \
+    "${SKYBOX_LIB_NAME}" "${major}" "${minor}" "${SKYBOX_LIB_EXT}"
+}
+
+validate_skybox_slurm_versions() {
+  local version
+  local lib_name
+  local seen
+  local seen_lib_names=()
+
+  for version in ${SKYBOX_SLURM_VERSIONS}; do
+    lib_name="$(skybox_slurm_lib_name "${version}")" || return 1
+    for seen in "${seen_lib_names[@]}"; do
+      if [ "${seen}" = "${lib_name}" ]; then
+        printf 'error: Slurm versions produce the same Skybox plugin: %s\n' \
+          "${lib_name}" >&2
+        return 1
+      fi
+    done
+    seen_lib_names+=("${lib_name}")
+  done
+}
+
 BUNDLE_NAME="${BUNDLE_NAME:-sarus-suite}"
 BUNDLE_VERSION="${BUNDLE_VERSION:-dev}"
 TARGET_ARCH="${TARGET_ARCH:-$(normalize_arch)}"
@@ -53,14 +87,23 @@ PARALLAX_OUT_REL="${PARALLAX_OUT_REL:-dist/parallax-static}"
 PARALLAX_BIN="${PARALLAX_BIN:-${PARALLAX_SRC_DIR}/${PARALLAX_OUT_REL}}"
 PARALLAX_MOUNT_PROGRAM_REL="${PARALLAX_MOUNT_PROGRAM_REL:-scripts/parallax-mount-program.sh}"
 
-SARUSCTL_REPO="${SARUSCTL_REPO:-https://github.com/sarus-suite/cluster-tooling.git}"
-SARUSCTL_REF="${SARUSCTL_REF:-main}"
-SARUSCTL_SRC_DIR="${SARUSCTL_SRC_DIR:-${SRC_DIR}/cluster-tooling}"
+CLUSTER_TOOLING_REPO="${CLUSTER_TOOLING_REPO:-https://github.com/sarus-suite/cluster-tooling.git}"
+CLUSTER_TOOLING_REF="${CLUSTER_TOOLING_REF:-main}"
+CLUSTER_TOOLING_SRC_DIR="${CLUSTER_TOOLING_SRC_DIR:-${SRC_DIR}/cluster-tooling}"
 SARUSCTL_DEVCONTAINER_CONFIG="${SARUSCTL_DEVCONTAINER_CONFIG:-.devcontainer/alpine/devcontainer.json}"
 SARUSCTL_BUILD_MODE="${SARUSCTL_BUILD_MODE:-devcontainer}"
 SARUSCTL_PREBUILT_BIN="${SARUSCTL_PREBUILT_BIN:-}"
 SARUSCTL_OUT_REL="${SARUSCTL_OUT_REL:-dist/sarusctl}"
 SARUSCTL_BIN="${SARUSCTL_BIN:-${BUILD_DIR}/sarusctl}"
+
+SKYBOX_DEVCONTAINER_CONFIG="${SKYBOX_DEVCONTAINER_CONFIG:-.devcontainer/skybox/devcontainer.json}"
+SKYBOX_BUILD_MODE="${SKYBOX_BUILD_MODE:-devcontainer}"
+SKYBOX_OUT_REL_DIR="${SKYBOX_OUT_REL_DIR:-dist}"
+SKYBOX_LIB_NAME="${SKYBOX_LIB_NAME:-libskybox}"
+SKYBOX_LIB_EXT="${SKYBOX_LIB_EXT:-so}"
+SKYBOX_BUILD_DIR="${SKYBOX_BUILD_DIR:-${BUILD_DIR}/skybox}"
+SKYBOX_BUNDLE_DIR="${BUNDLE_ROOT}/usr/lib64/slurm"
+SKYBOX_SLURM_VERSIONS="${SKYBOX_SLURM_VERSIONS:-25.5.9 25.11.4 26.5.4}"
 
 PERFEXT_REPO="${PERFEXT_REPO:-https://github.com/sarus-suite/performance-extensions.git}"
 PERFEXT_REF="${PERFEXT_REF:-main}"

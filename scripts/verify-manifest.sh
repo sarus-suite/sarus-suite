@@ -45,7 +45,19 @@ for component in "${components[@]}"; do
   }
 done
 
+source_components=(parallax cluster_tooling perfext)
+for component in "${source_components[@]}"; do
+  require_value "${component}_repo"
+  require_value "${component}_ref"
+  sha="$(manifest_value "${component}_sha")"
+  [[ "${sha}" =~ ^[0-9a-f]{40}$ ]] || {
+    printf 'error: manifest field is not a full Git SHA: %s_sha=%s\n' "${component}" "${sha}" >&2
+    exit 1
+  }
+done
+
 require_value containers_common_ref
+require_value skybox_slurm_versions
 podman_linkage="$(manifest_value podman_linkage)"
 [[ "${podman_linkage}" =~ ^(static|glibc)$ ]] || {
   printf 'error: invalid Podman linkage: %s\n' "${podman_linkage}" >&2

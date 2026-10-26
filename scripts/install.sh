@@ -258,7 +258,7 @@ render_template() {
     -e 's|@@SARUS_SUITE_PARALLAX_TMPDIR_LINE@@||g' \
     -e 's|@@SARUS_SUITE_PARALLAX_LOGFILE_LINE@@||g' \
     -e 's|@@SARUS_SUITE_PARALLAX_MP_LOGFILE_LINE@@||g' \
-    -e 's|@@SARUS_SUITE_PODMAN_TMP_PATH_LINE@@||g' \
+    -e 's|@@SARUS_SUITE_PODMAN_TMP_PATH_LINE@@|podman_tmp_path = "/var/tmp"|g' \
     "$src" > "$dest"
   chmod 0644 "$dest"
 }
@@ -975,6 +975,7 @@ fi
 BIN_DIR="${PREFIX}/bin"
 HOOK_DIR="${PREFIX}/libexec/oci/hooks"
 SHARE_DIR="${PREFIX}/share"
+SLURM_PLUGIN_DIR=/usr/lib64/slurm
 src=""
 name=""
 mode=""
@@ -1027,6 +1028,12 @@ copy_file "${BUNDLE_ROOT}/etc/containers/seccomp.json" /etc/containers/seccomp.j
 copy_file "${BUNDLE_ROOT}/etc/containers/containers.conf.modules/hpc" /etc/containers/containers.conf.modules/hpc 0644
 copy_tree "${BUNDLE_ROOT}/etc/containers/registries.d" /etc/containers/registries.d 0644
 copy_tree "${BUNDLE_ROOT}/etc/cdi" /etc/cdi 0644
+skybox_plugins=("${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}"/libskybox-slurm-*.so)
+[ -f "${skybox_plugins[0]}" ] || die "bundle contains no Skybox Slurm plugins: ${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}"
+copy_tree \
+  "${BUNDLE_ROOT}${SLURM_PLUGIN_DIR}" \
+  "${SLURM_PLUGIN_DIR}" \
+  0755
 for src in "${BUNDLE_ROOT}/etc/containers/oci/hooks.d"/*; do
   [ -f "$src" ] || continue
   render_template "$src" "$(payload_path "/etc/containers/oci/hooks.d/$(basename "$src")")"

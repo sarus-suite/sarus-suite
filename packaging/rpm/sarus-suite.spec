@@ -35,6 +35,7 @@ find %{buildroot}/etc -type f -printf '%%%%config(noreplace) %%p\n' \
 %files -f %{_builddir}/sarus-suite-etc.files
 %defattr(-,root,root,-)
 /opt/sarus-suite
+/usr/lib64/slurm
 
 %changelog
 * Wed Aug 19 2026 Sarus Suite maintainers <sarus-suite@cscs.ch> - %{version}-%{release}
