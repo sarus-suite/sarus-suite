@@ -65,6 +65,8 @@ cp -f "target/${target_triple}/release/pce_hook" dist/pce_hook
 cp -f "target/${target_triple}/release/pc_injection_hook" dist/pc_injection_hook
 cp -f "target/${target_triple}/release/mkhomedir" dist/mkhomedir
 cp -f "target/${target_triple}/release/sethomevar" dist/sethomevar
+cp -f "target/${target_triple}/release/pmix_hook" dist/pmix_hook
+cp -f "target/${target_triple}/release/squashfs_mounts" dist/squashfs_mounts
 BUILD
 )
 
@@ -103,6 +105,8 @@ install -Dm0755 "${PERFEXT_SRC_DIR}/dist/pce_hook" "${PERFEXT_PCE_HOOK_BIN}"
 install -Dm0755 "${PERFEXT_SRC_DIR}/dist/pc_injection_hook" "${PERFEXT_PC_INJECTION_HOOK_BIN}"
 install -Dm0755 "${PERFEXT_SRC_DIR}/dist/mkhomedir" "${PERFEXT_MKHOMEDIR_BIN}"
 install -Dm0755 "${PERFEXT_SRC_DIR}/dist/sethomevar" "${PERFEXT_SETHOMEVAR_BIN}"
+install -Dm0755 "${PERFEXT_SRC_DIR}/dist/pmix_hook" "${PERFEXT_PMIX_HOOK_BIN}"
+install -Dm0755 "${PERFEXT_SRC_DIR}/dist/squashfs_mounts" "${PERFEXT_SQUASHFS_MOUNTS_BIN}"
 
 for bin in \
   "${PERFEXT_LDCACHE_HOOK_BIN}" \
@@ -110,7 +114,9 @@ for bin in \
   "${PERFEXT_PCE_HOOK_BIN}" \
   "${PERFEXT_PC_INJECTION_HOOK_BIN}" \
   "${PERFEXT_MKHOMEDIR_BIN}" \
-  "${PERFEXT_SETHOMEVAR_BIN}"
+  "${PERFEXT_SETHOMEVAR_BIN}" \
+  "${PERFEXT_PMIX_HOOK_BIN}" \
+  "${PERFEXT_SQUASHFS_MOUNTS_BIN}"
 do
   [ -x "${bin}" ] || die "missing performance-extensions binary: ${bin}"
   verify_linux_binary_arch "${bin}"

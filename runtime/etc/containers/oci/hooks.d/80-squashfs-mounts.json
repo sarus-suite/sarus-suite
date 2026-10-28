@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "hook": {
+    "path": "@@SARUS_SUITE_HOOK_BIN@@/squashfs_mounts"
+  },
+  "when": {
+    "annotations": {
+      "com.hooks.squashfs_mounts": "^.*$"
+    }
+  },
+  "stages": [
+    "createContainer"
+  ]
+}
