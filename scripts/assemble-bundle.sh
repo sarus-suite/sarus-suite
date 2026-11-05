@@ -173,12 +173,25 @@ read_podman_build_metadata() {
   sed -n '1p' "${path}"
 }
 
+read_skopeo_build_metadata() {
+  local field="$1"
+  local path="${BUILD_DIR}/.build-metadata/skopeo.${field}"
+
+  [ -s "${path}" ] || {
+    printf 'error: missing Skopeo build metadata: %s\n' "${path}" >&2
+    exit 1
+  }
+  sed -n '1p' "${path}"
+}
+
 podman_linkage=$(read_podman_build_metadata podman linkage)
 podman_glibc_baseline=$(read_podman_build_metadata podman glibc-baseline)
 podman_seccomp=$(read_podman_build_metadata podman seccomp)
 podman_selinux=$(read_podman_build_metadata podman selinux)
 podman_apparmor=$(read_podman_build_metadata podman apparmor)
 seccomp_sha256=$(read_podman_build_metadata seccomp sha256)
+skopeo_linkage=$(read_skopeo_build_metadata linkage)
+skopeo_glibc_baseline=$(read_skopeo_build_metadata glibc-baseline)
 
 cat > "${RUNTIME_MANIFEST}" <<MANIFEST
 bundle_name=${BUNDLE_NAME}
@@ -205,6 +218,12 @@ podman_glibc_baseline=${podman_glibc_baseline}
 podman_seccomp=${podman_seccomp}
 podman_selinux=${podman_selinux}
 podman_apparmor=${podman_apparmor}
+skopeo_repo=$(read_skopeo_build_metadata repo)
+skopeo_ref=$(read_skopeo_build_metadata ref)
+skopeo_sha=$(read_skopeo_build_metadata sha)
+skopeo_version=${SKOPEO_VERSION}
+skopeo_linkage=${skopeo_linkage}
+skopeo_glibc_baseline=${skopeo_glibc_baseline}
 conmon_repo=$(read_podman_build_metadata conmon repo)
 conmon_ref=$(read_podman_build_metadata conmon ref)
 conmon_sha=$(read_podman_build_metadata conmon sha)
