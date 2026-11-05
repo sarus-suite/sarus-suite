@@ -68,7 +68,9 @@ verify_static_elf() {
 verify_glibc_elf() {
   local path="$1"
   local baseline="${2:-2.34}"
+  local component="${3:-binary}"
   local needed
+  local max_glibc
 
   [ -x "${path}" ] || {
     printf 'error: expected executable: %s\n' "${path}" >&2
@@ -78,7 +80,7 @@ verify_glibc_elf() {
     return 0
   fi
   readelf -l "${path}" | grep -Eq 'Requesting program interpreter: /lib(64)?/ld-linux-(x86-64|aarch64)\.so\.[12]' || {
-    printf 'error: Podman is not a glibc-linked ELF: %s\n' "${path}" >&2
+    printf 'error: %s is not a glibc-linked ELF: %s\n' "${component}" "${path}" >&2
     exit 1
   }
   needed="$(readelf -d "${path}" | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p')"
@@ -86,19 +88,19 @@ verify_glibc_elf() {
     case "${lib}" in
       libc.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libm.so.6|libresolv.so.2|libutil.so.1|ld-linux-aarch64.so.1|ld-linux-x86-64.so.2) ;;
       '') ;;
-      *) printf 'error: unsupported Podman shared dependency: %s\n' "${lib}" >&2; exit 1 ;;
+      *) printf 'error: unsupported %s shared dependency: %s\n' "${component}" "${lib}" >&2; exit 1 ;;
     esac
   done <<< "${needed}"
   max_glibc="$(readelf --version-info "${path}" | sed -n 's/.*Name: GLIBC_\([0-9][0-9.]*\).*/\1/p' | sort -V | tail -n 1)"
   [ -z "${max_glibc}" ] || [ "$(printf '%s\n' "${max_glibc}" "${baseline}" | sort -V | tail -n 1)" = "${baseline}" ] || {
-    printf 'error: Podman requires glibc %s, baseline is %s\n' "${max_glibc}" "${baseline}" >&2
+    printf 'error: %s requires glibc %s, baseline is %s\n' "${component}" "${max_glibc}" "${baseline}" >&2
     exit 1
   }
 }
 
 podman_linkage="$(sed -n 's/^podman_linkage=//p' "${RUNTIME_MANIFEST}" 2>/dev/null || true)"
 if [ "${podman_linkage}" = glibc ]; then
-  verify_glibc_elf "${RUNTIME_BIN_DIR}/podman" "$(sed -n 's/^podman_glibc_baseline=//p' "${RUNTIME_MANIFEST}")"
+  verify_glibc_elf "${RUNTIME_BIN_DIR}/podman" "$(sed -n 's/^podman_glibc_baseline=//p' "${RUNTIME_MANIFEST}")" Podman
 else
   verify_static_elf "${RUNTIME_BIN_DIR}/podman"
 fi
@@ -112,7 +114,12 @@ if [ -e "${RUNTIME_BIN_DIR}/rootlessport" ]; then
   verify_static_elf "${RUNTIME_BIN_DIR}/rootlessport"
 fi
 verify_static_elf "${RUNTIME_BIN_DIR}/sarusctl"
-verify_static_elf "${RUNTIME_BIN_DIR}/skopeo"
+skopeo_linkage="$(sed -n 's/^skopeo_linkage=//p' "${RUNTIME_MANIFEST}" 2>/dev/null || true)"
+if [ "${skopeo_linkage}" = glibc ]; then
+  verify_glibc_elf "${RUNTIME_BIN_DIR}/skopeo" "$(sed -n 's/^skopeo_glibc_baseline=//p' "${RUNTIME_MANIFEST}")" Skopeo
+else
+  verify_static_elf "${RUNTIME_BIN_DIR}/skopeo"
+fi
 verify_static_elf "${RUNTIME_BIN_DIR}/ldcache_hook"
 verify_static_elf "${RUNTIME_BIN_DIR}/mps_hook"
 verify_static_elf "${RUNTIME_BIN_DIR}/pce_hook"

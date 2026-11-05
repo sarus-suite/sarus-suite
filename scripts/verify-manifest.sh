@@ -33,7 +33,7 @@ require_value() {
   esac
 }
 
-components=(podman conmon netavark aardvark_dns passt crun catatonit)
+components=(podman skopeo conmon netavark aardvark_dns passt crun catatonit)
 for component in "${components[@]}"; do
   require_value "${component}_repo"
   require_value "${component}_ref"
@@ -75,6 +75,16 @@ else
     exit 1
   }
 fi
+skopeo_linkage="$(manifest_value skopeo_linkage)"
+[ "${skopeo_linkage}" = glibc ] || {
+  printf 'error: invalid Skopeo linkage: %s\n' "${skopeo_linkage}" >&2
+  exit 1
+}
+skopeo_glibc_baseline="$(manifest_value skopeo_glibc_baseline)"
+[[ "${skopeo_glibc_baseline}" =~ ^[0-9]+\.[0-9]+$ ]] || {
+  printf 'error: invalid Skopeo glibc baseline: %s\n' "${skopeo_glibc_baseline}" >&2
+  exit 1
+}
 for feature in seccomp selinux apparmor; do
   feature_state="$(manifest_value "podman_${feature}")"
   [[ "${feature_state}" =~ ^(enabled|disabled)$ ]] || {
