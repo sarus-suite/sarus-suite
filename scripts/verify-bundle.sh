@@ -112,6 +112,7 @@ if [ -e "${RUNTIME_BIN_DIR}/rootlessport" ]; then
   verify_static_elf "${RUNTIME_BIN_DIR}/rootlessport"
 fi
 verify_static_elf "${RUNTIME_BIN_DIR}/sarusctl"
+verify_static_elf "${RUNTIME_BIN_DIR}/skopeo"
 verify_static_elf "${RUNTIME_BIN_DIR}/ldcache_hook"
 verify_static_elf "${RUNTIME_BIN_DIR}/mps_hook"
 verify_static_elf "${RUNTIME_BIN_DIR}/pce_hook"

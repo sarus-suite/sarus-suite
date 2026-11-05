@@ -159,6 +159,7 @@ main() {
   check_cmd_path podman
   check_cmd_path parallax
   check_cmd_path sarusctl
+  check_cmd_path skopeo
   check_cmd_path crun
   check_cmd_path conmon
   check_cmd_path pasta

@@ -64,8 +64,8 @@ sudo ./bin/sarus-suite-system-install
 
 This installs commands under `/usr/local/bin`, configuration under `/etc`,
 and a per-user Parallax image store at `~/.sarus-suite/ro-store`. Start a new
-login shell after installation, then use `podman`, `parallax`, `sarusctl`, or
-`sarus-suite-check` directly.
+login shell after installation, then use `podman`, `skopeo`, `parallax`,
+`sarusctl`, or `sarus-suite-check` directly.
 
 Preview the installation without changing the host:
 
