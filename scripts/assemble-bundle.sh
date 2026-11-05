@@ -56,6 +56,7 @@ install_bin_if_present "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/rootlesspor
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/catatonit" catatonit
 install_bin "${PARALLAX_BIN}" parallax
 install_bin "${SARUSCTL_BIN}" sarusctl
+install_bin "${SKOPEO_BIN}" skopeo
 install_multiple_skybox
 install_bin "${PERFEXT_LDCACHE_HOOK_BIN}" ldcache_hook
 install_bin "${PERFEXT_MPS_HOOK_BIN}" mps_hook

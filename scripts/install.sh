@@ -860,7 +860,7 @@ if [ "$MODE" = user ]; then
   ## Install launched and public command thin wrappers
   copy_file "${BUNDLE_ROOT}/libexec/sarus-suite/user-launch.sh" /libexec/sarus-suite/launch 0755
   copy_file "${BUNDLE_ROOT}/libexec/sarus-suite/install.sh" /libexec/sarus-suite/install.sh 0755
-  for name in sarusctl podman parallax sarus-suite-check; do
+  for name in sarusctl podman skopeo parallax sarus-suite-check; do
     [ -x "${BUNDLE_ROOT}/bin/${name}" ] || die "bundle public command not found: ${name}"
     write_user_command_wrapper "$(payload_path "/bin/${name}")" "$name"
   done
@@ -939,7 +939,7 @@ if [ "$MODE" = user ]; then
   if [ -z "$shell_init_file" ]; then
     printf 'Add %s/bin to PATH to use the installed commands.\n' "$USER_ROOT"
   else
-    printf 'Start a new shell to use sarusctl, podman, parallax, and sarus-suite-check.\n'
+    printf 'Start a new shell to use sarusctl, podman, skopeo, parallax, and sarus-suite-check.\n'
   fi
   exit 0
 fi
