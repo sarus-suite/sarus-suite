@@ -22,9 +22,8 @@ require_private_dir() {
 tool="$1"
 shift
 
-# This can only launch the 4 sarus-suite tools
 case "$tool" in
-  sarusctl|podman|parallax|sarus-suite-check) ;;
+  sarusctl|podman|skopeo|parallax|sarus-suite-check) ;;
   *) die "unsupported Sarus Suite command: ${tool}" ;;
 esac
 
