@@ -19,6 +19,7 @@ OUT="${SQUASHFUSE_LL_BIN}" SQUASHFUSE_VERSION="${SQUASHFUSE_VERSION}" sh ./devco
 OUT="${FUSE_OVERLAYFS_BIN}" FUSE_OVERLAYFS_VERSION="${FUSE_OVERLAYFS_VERSION}" sh ./devcontainer/scripts/build-fuse-overlayfs-static.sh
 OUT="${FUSERMOUNT3_BIN}" LIBFUSE_VERSION="${LIBFUSE_VERSION}" sh ./devcontainer/scripts/build-fusermount3-static.sh
 OUT="${BWRAP_BIN}" BUBBLEWRAP_VERSION="${BUBBLEWRAP_VERSION}" BUBBLEWRAP_REPO="${BUBBLEWRAP_REPO}" sh ./devcontainer/scripts/build-bwrap-static.sh
+SKOPEO_BIN="${SKOPEO_BIN}" bash ./devcontainer/scripts/build-skopeo-static.sh
 BUILD
 )
 
