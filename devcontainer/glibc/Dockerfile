@@ -1,6 +1,6 @@
 FROM debian:12-slim
 
-ARG GO_VERSION=1.25.0
+ARG GO_VERSION=1.27.0
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

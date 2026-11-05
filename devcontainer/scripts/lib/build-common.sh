@@ -209,3 +209,17 @@ build_make_workdir() {
 build_jobs() {
   getconf _NPROCESSORS_ONLN 2>/dev/null || printf '1\n'
 }
+
+update_rust_default_version() {
+  local RUST_VERSION="$1"
+  local OLD_TOOLCHAIN=$(/root/.cargo/bin/rustup default | grep "(default)" | awk '{print $1}')
+  echo "${OLD_TOOLCHAIN}" > /root/.cargo/.previous_toolchain
+  local OLD_VERSION=$(echo $OLD_TOOLCHAIN | cut -d '-' -f 1)
+  local OLD_TARGET=$(echo $OLD_TOOLCHAIN | sed "s/^${OLD_VERSION}\-//")
+  /root/.cargo/bin/rustup default "${RUST_VERSION}-${OLD_TARGET}"
+}
+
+restore_previous_rust_default_version() {
+  local OLD_TOOLCHAIN=$(cat /root/.cargo/.previous_toolchain)
+  /root/.cargo/bin/rustup default "${OLD_TOOLCHAIN}"
+}

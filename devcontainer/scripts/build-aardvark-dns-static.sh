@@ -15,10 +15,15 @@ build_require_cmd git
 build_require_cmd cargo
 build_checkout_tag "${AARDVARK_DNS_REPO}" "${AARDVARK_DNS_VERSION}" "${SRC_DIR}" "${AARDVARK_DNS_SHA}"
 
+[ -n "${AARDVARK_BUILD_RUST_VERSION}" ] && update_rust_default_version "${AARDVARK_BUILD_RUST_VERSION}"
+
 cd "${SRC_DIR}"
 [ -n "${RUST_MUSL_TARGET}" ] || build_die "unsupported TARGET_ARCH for aardvark-dns: ${TARGET_ARCH}"
 export RUSTFLAGS="${AARDVARK_DNS_RUSTFLAGS:--C target-feature=+crt-static -C link-arg=-s}"
+patch -p0 ${SRC_DIR}/src/main.rs ${ROOT_DIR}/devcontainer/patches/aardvark-dns/issue-743.patch
 CARGO_BUILD_TARGET="${RUST_MUSL_TARGET}" cargo build --locked --release
+
+[ -n "${AARDVARK_BUILD_RUST_VERSION}" ] && restore_previous_rust_default_version
 
 mkdir -p "$(dirname "${OUTPUT}")"
 cp "target/${RUST_MUSL_TARGET}/release/aardvark-dns" "${OUTPUT}"

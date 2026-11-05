@@ -2,7 +2,7 @@
 set -eu
 
 OUT="${OUT:-dist/fusermount3-static/fusermount3}"
-LIBFUSE_VERSION="${LIBFUSE_VERSION:-3.18.2}"
+LIBFUSE_VERSION="${LIBFUSE_VERSION:-3.18.3}"
 LIBFUSE_REPO="${LIBFUSE_REPO:-https://github.com/libfuse/libfuse.git}"
 KEEP_WORKDIR="${KEEP_WORKDIR:-0}"
 JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}"

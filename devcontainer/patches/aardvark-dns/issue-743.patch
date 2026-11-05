@@ -1,0 +1,24 @@
+--- src/main.rs.old	2026-11-04 16:25:12.654558699 +0100
++++ src/main.rs.new	2026-11-04 16:30:12.014960974 +0100
+@@ -32,9 +32,20 @@
+     Version(version::Version),
+ }
+ 
++
++#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_os = "freebsd",))]
++unsafe fn close_range(first: libc::c_uint, last: libc::c_uint, flags: libc::c_int) -> libc::c_int {
++    unsafe { libc::close_range(first, last, flags) }
++}
++
++#[cfg(all(target_os = "linux", not(target_env = "gnu"),))]
++unsafe fn close_range(first: libc::c_uint, last: libc::c_uint, flags: libc::c_int) -> libc::c_int {
++    unsafe { libc::syscall(libc::SYS_close_range, first, last, flags) as libc::c_int }
++}
++
+ fn main() {
+     // Close all fds we inherited from our parent process, we only need stdio.
+-    let _ = unsafe { libc::close_range(3, libc::c_uint::MAX, 0) };
++    let _ = unsafe { close_range(3, libc::c_uint::MAX, 0) };
+ 
+     let formatter = Formatter3164 {
+         facility: Facility::LOG_USER,
