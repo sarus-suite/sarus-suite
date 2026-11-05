@@ -7,7 +7,7 @@ source "${ROOT_DIR}/components.sh"
 
 mkdir -p "${BUILD_DIR}"
 
-build_cmd=$(cat <<'BUILD'
+alpine_build_cmd=$(cat <<'BUILD'
 set -euo pipefail
 source ./components.sh
 mkdir -p "${BUILD_DIR}"
@@ -19,29 +19,17 @@ OUT="${SQUASHFUSE_LL_BIN}" SQUASHFUSE_VERSION="${SQUASHFUSE_VERSION}" sh ./devco
 OUT="${FUSE_OVERLAYFS_BIN}" FUSE_OVERLAYFS_VERSION="${FUSE_OVERLAYFS_VERSION}" sh ./devcontainer/scripts/build-fuse-overlayfs-static.sh
 OUT="${FUSERMOUNT3_BIN}" LIBFUSE_VERSION="${LIBFUSE_VERSION}" sh ./devcontainer/scripts/build-fusermount3-static.sh
 OUT="${BWRAP_BIN}" BUBBLEWRAP_VERSION="${BUBBLEWRAP_VERSION}" BUBBLEWRAP_REPO="${BUBBLEWRAP_REPO}" sh ./devcontainer/scripts/build-bwrap-static.sh
-SKOPEO_BIN="${SKOPEO_BIN}" bash ./devcontainer/scripts/build-skopeo-static.sh
 BUILD
 )
 
-if command -v devcontainer >/dev/null 2>&1; then
-  (
-    # Keep Podman/crun's host cwd off the bind-mounted workspace. This avoids
-    # getcwd failures on rootless and network-filesystem-backed setups.
-    cd /
-    devcontainer up \
-      --remove-existing-container \
-      --workspace-folder "${ROOT_DIR}" \
-      --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" >/dev/null
+glibc_build_cmd=$(cat <<'BUILD'
+set -euo pipefail
+source ./components.sh
+mkdir -p "${BUILD_DIR}"
 
-    workspace_name="$(basename "${ROOT_DIR}")"
-    devcontainer exec \
-      --workspace-folder "${ROOT_DIR}" \
-      --config "${ROOT_DIR}/devcontainer/alpine/devcontainer.json" \
-      bash -lc "cd /workspaces/${workspace_name} && ${build_cmd}"
-  )
-elif [ -f /etc/alpine-release ]; then
-  bash -lc "${build_cmd}"
-else
-  printf '%s\n' 'error: need devcontainer CLI or Alpine build environment to build helpers' >&2
-  exit 1
-fi
+SKOPEO_BIN="${SKOPEO_BIN}" bash ./devcontainer/scripts/build-skopeo-glibc.sh
+BUILD
+)
+
+"${ROOT_DIR}/scripts/run-alpine-build.sh" "${alpine_build_cmd}"
+"${ROOT_DIR}/scripts/run-glibc-build.sh" "${glibc_build_cmd}"
