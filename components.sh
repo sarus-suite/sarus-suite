@@ -125,9 +125,9 @@ PODMAN_STATIC_PREFIX="${PODMAN_BUILD_PREFIX}"
 BUILD_CACHE_MODE="${BUILD_CACHE_MODE:-auto}"
 BUILD_CACHE_REPOSITORY="${BUILD_CACHE_REPOSITORY:-ghcr.io/sarus-suite/sarus-suite-build-cache}"
 
-PODMAN_VERSION="${PODMAN_VERSION:-v6.1.4}"
+PODMAN_VERSION="${PODMAN_VERSION:-v6.2.0}"
 PODMAN_REPO="${PODMAN_REPO:-https://github.com/podman-container-tools/podman.git}"
-PODMAN_SHA="${PODMAN_SHA:-464c15fec06f0074c916f9eff87c4806869c2833}"
+PODMAN_SHA="${PODMAN_SHA:-055de046937d29450f310fce0fe3071485d8bed9}"
 PODMAN_BUILDTAGS="${PODMAN_BUILDTAGS:-seccomp selinux apparmor exclude_graphdriver_devicemapper containers_image_openpgp}"
 
 CONMON_VERSION="${CONMON_VERSION:-v2.2.1}"
