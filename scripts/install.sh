@@ -19,7 +19,8 @@ RPM packaging can then consume that tree.
 Options:
   --bundle-root DIR       Assembled Sarus Suite bundle
   --output-dir DIR        New or empty payload directory
-  --parallax-store PATH   Per-user image store expression
+  --hpc-image-store PATH  Per-user cas image store expression
+  --parallax-store PATH   Per-user parallax mage store expression
                           (default: ${HOME}/.sarus-suite/ro-store)
   --podman-graphroot PATH User-mode Podman persistent storage root
                           (default: Podman's XDG data default)
@@ -249,6 +250,7 @@ render_template() {
     -e "s|@@SARUS_SUITE_BIN@@|$(escape_sed_replacement "$BIN_DIR")|g" \
     -e "s|@@SARUS_SUITE_HOOK_BIN@@|$(escape_sed_replacement "$HOOK_DIR")|g" \
     -e 's|@@SARUS_SUITE_CONFIG@@|/etc|g' \
+    -e "s|@@SARUS_SUITE_HPC_IMAGE_STORE@@|$(escape_sed_replacement "$HPC_IMAGE_STORE")|g" \
     -e "s|@@SARUS_SUITE_PARALLAX_STORE@@|$(escape_sed_replacement "$PARALLAX_STORE")|g" \
     -e "s|@@SARUS_SUITE_CDI_SPEC_DIRS@@|$(escape_sed_replacement "$cdi_line")|g" \
     -e 's|@@SARUS_SUITE_PODMAN_GRAPHROOT_LINE@@||g' \
@@ -289,6 +291,7 @@ render_user_template() {
     -e "s|@@SARUS_SUITE_BIN@@|$(escape_sed_replacement "$USER_PAYLOAD_BIN")|g" \
     -e "s|@@SARUS_SUITE_HOOK_BIN@@|$(escape_sed_replacement "$USER_HOOK_DIR")|g" \
     -e "s|@@SARUS_SUITE_CONFIG@@|$(escape_sed_replacement "$USER_CONFIG_HOME")|g" \
+    -e "s|@@SARUS_SUITE_HPC_IMAGE_STORE@@|$(escape_sed_replacement "$HPC_IMAGE_STORE")|g" \
     -e "s|@@SARUS_SUITE_PARALLAX_STORE@@|$(escape_sed_replacement "$PARALLAX_STORE")|g" \
     -e "s|@@SARUS_SUITE_CDI_SPEC_DIRS@@|$(escape_sed_replacement "$cdi_line")|g" \
     -e "s|@@SARUS_SUITE_PODMAN_GRAPHROOT_LINE@@|$(escape_sed_replacement "$podman_graphroot_line")|g" \
@@ -442,7 +445,7 @@ remove_user_shell_init() {
 
 uninstall_user_payload() {
   local manifest="${USER_ROOT}/install/manifest.txt"
-  local installed_root shell_init_file parallax_store podman_graphroot podman_runroot path running_containers
+  local installed_root shell_init_file parallax_store hpc_image_store podman_graphroot podman_runroot path running_containers
 
   [ -d "$USER_ROOT" ] && [ ! -L "$USER_ROOT" ] || die "user installation not found: ${USER_ROOT}"
   [ -O "$USER_ROOT" ] || die "user root is not owned by the current user: ${USER_ROOT}"
@@ -455,6 +458,7 @@ uninstall_user_payload() {
   if ! grep -q '^shell_init=' "$manifest"; then
     shell_init_file="$(resolve_shell_init)"
   fi
+  hpc_image_store="$(manifest_value hpc_image_store "$manifest")"
   parallax_store="$(manifest_value parallax_store "$manifest")"
   podman_graphroot="$(manifest_value podman_graphroot "$manifest")"
   podman_runroot="$(manifest_value podman_runroot "$manifest")"
@@ -462,7 +466,7 @@ uninstall_user_payload() {
 
   printf 'Sarus Suite user uninstall\n'
   printf 'user_root=%s\n' "$USER_ROOT"
-  for path in "$parallax_store" "$podman_graphroot" "$podman_runroot"; do
+  for path in "$hpc_image_store" "$parallax_store" "$podman_graphroot" "$podman_runroot"; do
     [ -n "$path" ] && [ "$path" != 'XDG default' ] || continue
     case "$path" in
       "$USER_ROOT"|"$USER_ROOT"/*) ;;
@@ -508,6 +512,10 @@ apply_user_payload() {
 
   if [ -e "$USER_ROOT" ] || [ -L "$USER_ROOT" ]; then
     [ -d "$USER_ROOT" ] && [ ! -L "$USER_ROOT" ] || die "user root is not a directory: ${USER_ROOT}"
+  fi
+  if [ -e "$HPC_IMAGE_STORE" ] || [ -L "$HPC_IMAGE_STORE" ]; then
+    [ -d "$HPC_IMAGE_STORE" ] || die "HPC image store is not a directory: ${HPC_IMAGE_STORE}"
+    [ -w "$HPC_IMAGE_STORE" ] || die "HPC image store is not writable: ${HPC_IMAGE_STORE}"
   fi
   if [ -e "$PARALLAX_STORE" ] || [ -L "$PARALLAX_STORE" ]; then
     [ -d "$PARALLAX_STORE" ] || die "Parallax store is not a directory: ${PARALLAX_STORE}"
@@ -565,6 +573,7 @@ apply_user_payload() {
     printf 'user_root=%s\n' "$USER_ROOT"
     printf 'podman_graphroot=%s\n' "$PODMAN_GRAPHROOT"
     printf 'parallax_store=%s\n\nChanges:\n' "$PARALLAX_STORE"
+    printf 'hpc_image_store=%s\n\nChanges:\n' "$HPC_IMAGE_STORE"
   } > "$report_tmp"
 
   for src in "${staged_files[@]}"; do
@@ -588,6 +597,12 @@ apply_user_payload() {
     "${USER_ROOT}/xdg/data" \
     "${USER_ROOT}/xdg/state/sarus-suite/logs" \
     "${USER_ROOT}/xdg/cache"
+  if [ -e "$HPC_IMAGE_STORE" ] || [ -L "$HPC_IMAGE_STORE" ]; then
+    [ -d "$HPC_IMAGE_STORE" ] || die "HPC image store is not a directory: ${HPC_IMAGE_STORE}"
+    [ -w "$HPC_IMAGE_STORE" ] || die "HPC image store is not writable: ${HPC_IMAGE_STORE}"
+  else
+    install -d -m 0700 "$HPC_IMAGE_STORE"
+  fi
   if [ -e "$PARALLAX_STORE" ] || [ -L "$PARALLAX_STORE" ]; then
     [ -d "$PARALLAX_STORE" ] || die "Parallax store is not a directory: ${PARALLAX_STORE}"
     [ -w "$PARALLAX_STORE" ] || die "Parallax store is not writable: ${PARALLAX_STORE}"
@@ -660,6 +675,8 @@ register_hook_dir() {
 BUNDLE_ROOT=""
 OUTPUT_DIR=""
 PREFIX="/opt/sarus-suite"
+HPC_IMAGE_STORE='${HOME}/.sarus-suite/cas-store'
+HPC_IMAGE_STORE_SET=0
 PARALLAX_STORE='${HOME}/.sarus-suite/ro-store'
 PARALLAX_STORE_SET=0
 PODMAN_GRAPHROOT=""
@@ -686,6 +703,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --bundle-root) [ $# -ge 2 ] || die "--bundle-root requires a directory"; BUNDLE_ROOT="$2"; shift 2 ;;
     --output-dir) [ $# -ge 2 ] || die "--output-dir requires a directory"; OUTPUT_DIR="$2"; shift 2 ;;
+    --hpc-image-store) [ $# -ge 2 ] || die "--hpc-image-store requires a path"; HPC_IMAGE_STORE="$2"; HPC_IMAGE_STORE_SET=1; shift 2 ;;
     --parallax-store) [ $# -ge 2 ] || die "--parallax-store requires a path"; PARALLAX_STORE="$2"; PARALLAX_STORE_SET=1; shift 2 ;;
     --podman-graphroot) [ $# -ge 2 ] || die "--podman-graphroot requires a path"; PODMAN_GRAPHROOT="$2"; shift 2 ;;
     --podman-runroot) [ $# -ge 2 ] || die "--podman-runroot requires a path"; PODMAN_RUNROOT="$2"; shift 2 ;;
@@ -742,6 +760,9 @@ if [ "$MODE" = user ]; then
   [ "$REPORT_FILE" = /var/log/sarus-suite-install-report.txt ] || die "--report is not valid for user installation"
   require_absolute_path --user-root "$USER_ROOT"
   [ "$USER_ROOT" != / ] || die "--user-root cannot be the filesystem root"
+  if [ "$HPC_IMAGE_STORE_SET" -eq 0 ]; then
+    HPC_IMAGE_STORE="${USER_ROOT}/xdg/data/sarus-suite/cas-store/cas-store"
+  fi
   if [ "$PARALLAX_STORE_SET" -eq 0 ]; then
     PARALLAX_STORE="${USER_ROOT}/xdg/data/sarus-suite/parallax/ro-store"
   fi
@@ -749,6 +770,7 @@ if [ "$MODE" = user ]; then
     PODMAN_GRAPHROOT="${USER_ROOT}/xdg/data/containers/storage"
   fi
   require_absolute_path --parallax-store "$PARALLAX_STORE"
+  require_absolute_path --hpc-image-store "$HPC_IMAGE_STORE"
   for path in "$PODMAN_GRAPHROOT" "$PODMAN_RUNROOT"; do
     [ -n "$path" ] || continue
     require_absolute_path "Podman storage path" "$path"
@@ -772,6 +794,7 @@ elif [ "$MODE" = user-uninstall ]; then
     auto|none) ;;
     *) require_absolute_path --shell-init "$SHELL_INIT" ;;
   esac
+  [ "$HPC_IMAGE_STORE_SET" -eq 0 ] || die "--hpc-image-store is not valid for user uninstallation"
   [ "$PARALLAX_STORE_SET" -eq 0 ] || die "--parallax-store is not valid for user uninstallation"
   [ -z "$PODMAN_GRAPHROOT" ] || die "--podman-graphroot is not valid for user uninstallation"
   [ -z "$PODMAN_RUNROOT" ] || die "--podman-runroot is not valid for user uninstallation"
@@ -785,6 +808,10 @@ else
   case "$PARALLAX_STORE" in
     '$HOME/'*|'${HOME}/'*) ;;
     *) require_absolute_path --parallax-store "$PARALLAX_STORE" ;;
+  esac
+  case "$HPC_IMAGE_STORE" in
+    '$HOME/'*|'${HOME}/'*) ;;
+    *) require_absolute_path --hpc-image-store "$HPC_IMAGE_STORE" ;;
   esac
 fi
 
@@ -894,6 +921,7 @@ if [ "$MODE" = user ]; then
   manifest="$(payload_path /install/manifest.txt)"
   install -d -m 0755 "$(dirname "$manifest")"
   {
+    printf 'SARUS_SUITE_INSTALLED_HPC_IMAGE_STORE=%q\n' "$HPC_IMAGE_STORE"
     printf 'SARUS_SUITE_INSTALLED_PARALLAX_STORE=%q\n' "$PARALLAX_STORE"
     printf 'SARUS_SUITE_INSTALLED_PODMAN_GRAPHROOT=%q\n' "$PODMAN_GRAPHROOT"
     printf 'SARUS_SUITE_INSTALLED_PODMAN_RUNROOT=%q\n' "$PODMAN_RUNROOT"
@@ -907,6 +935,7 @@ if [ "$MODE" = user ]; then
     printf 'config_home=%s\n' "$USER_CONFIG_HOME"
     printf 'state_dir=%s\n' "$USER_STATE_DIR"
     printf 'shell_init=%s\n' "$shell_init_file"
+    printf 'hpc_image_store=%s\n' "$HPC_IMAGE_STORE"
     printf 'parallax_store=%s\n' "$PARALLAX_STORE"
     printf 'podman_graphroot=%s\n' "$PODMAN_GRAPHROOT"
     printf 'podman_runroot=%s\n' "${PODMAN_RUNROOT:-XDG default}"
@@ -957,7 +986,7 @@ if [ "$MODE" = apply ]; then
   trap 'rm -rf "${APPLY_WORK_DIR}"' EXIT INT TERM
 
   # recursive invocation in stage mode!
-  STAGE_ARGS=(stage --bundle-root "$BUNDLE_ROOT" --output-dir "${APPLY_WORK_DIR}/payload" --parallax-store "$PARALLAX_STORE")
+  STAGE_ARGS=(stage --bundle-root "$BUNDLE_ROOT" --output-dir "${APPLY_WORK_DIR}/payload" --parallax-store "$PARALLAX_STORE" --hpc-image-store "$HPC_IMAGE_STORE")
   for spec in "${IMPORT_BINARY_SPECS[@]}"; do STAGE_ARGS+=(--import-binary "$spec"); done
   for dir in "${IMPORT_HOOK_DIRS[@]}"; do STAGE_ARGS+=(--import-hook-dir "$dir"); done
   "$0" "${STAGE_ARGS[@]}"
@@ -1064,6 +1093,7 @@ cat > "$manifest" <<MANIFEST
 install_prefix=${PREFIX}
 bin_dir=${BIN_DIR}
 hook_dir=${HOOK_DIR}
+hpc_image_store=${HPC_IMAGE_STORE}
 parallax_store=${PARALLAX_STORE}
 MANIFEST
 for ((i = 0; i < ${#IMPORT_BINARY_NAMES[@]}; i++)); do
