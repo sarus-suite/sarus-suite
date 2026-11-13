@@ -54,7 +54,7 @@ else
   build_log "rootlessport source unavailable; continuing because it is optional"
 fi
 
-common_version="$(grep -Eom1 'github.com/containers/common [^ ]+' go.mod | sed 's!github.com/containers/common !!')"
+common_version="$(grep -Eom1 'go.podman.io/common [^ ]+' go.mod | awk '{print $2}')"
 [ -n "${common_version}" ] || build_die "unable to determine containers/common version from Podman go.mod"
 build_record_provenance "${PREFIX_DIR}" podman "${PODMAN_REPO}" "${PODMAN_VERSION}" "${BUILD_CHECKOUT_SHA}"
 printf '%s\n' "${common_version}" > "${PREFIX_DIR}/.build-metadata/containers-common.ref"
@@ -64,7 +64,7 @@ build_record_tag_state "${PREFIX_DIR}" podman seccomp "${PODMAN_BUILDTAGS}"
 build_record_tag_state "${PREFIX_DIR}" podman selinux "${PODMAN_BUILDTAGS}"
 build_record_tag_state "${PREFIX_DIR}" podman apparmor "${PODMAN_BUILDTAGS}"
 build_require_cmd sha256sum
-curl -fsSL "https://raw.githubusercontent.com/containers/common/${common_version}/pkg/seccomp/seccomp.json" \
+curl -fsSL "https://raw.githubusercontent.com/podman-container-tools/container-libs/common/${common_version}/common/pkg/seccomp/seccomp.json" \
   -o "${PREFIX_DIR}/etc/containers/seccomp.json"
 sha256sum "${PREFIX_DIR}/etc/containers/seccomp.json" | awk '{print $1}' \
   > "${PREFIX_DIR}/.build-metadata/seccomp.sha256"

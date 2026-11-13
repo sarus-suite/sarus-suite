@@ -68,6 +68,7 @@ run_trace() {
   log "tracing sarusctl ${name}"
   if ! "$SHELL_BIN" \
     --state-root "$STATE_DIR" \
+    --hpc-image-store "$HPC_STORE_DIR" \
     --parallax-store "$STORE_DIR" \
     -- strace \
       -f \
@@ -152,8 +153,9 @@ else
 fi
 
 STATE_DIR="$OUTPUT_DIR/state"
+HPC_STORE_DIR="$OUTPUT_DIR/hpc-image-store"
 STORE_DIR="$OUTPUT_DIR/parallax-store"
-mkdir -p "$STATE_DIR" "$STORE_DIR"
+mkdir -p "$STATE_DIR" "$STORE_DIR" "$HPC_STORE_DIR"
 
 log "bundle root: $BUNDLE_ROOT"
 log "EDF: $EDF_FILE"
@@ -163,6 +165,7 @@ log "artifacts: $OUTPUT_DIR"
 log "capturing the shell environment and rendered configuration"
 "$SHELL_BIN" \
   --state-root "$STATE_DIR" \
+  --hpc-image-store "$HPC_STORE_DIR" \
   --parallax-store "$STORE_DIR" \
   -- bash -c '
     set -euo pipefail
@@ -177,6 +180,7 @@ log "capturing the shell environment and rendered configuration"
       printf "CONTAINERS_POLICY=%s\n" "$CONTAINERS_POLICY"
       printf "SARUS_SUITE_ROOT=%s\n" "$SARUS_SUITE_ROOT"
       printf "SARUS_SUITE_STATE=%s\n" "$SARUS_SUITE_STATE"
+      printf "SARUS_SUITE_HPC_IMAGE_STORE=%s\n" "$SARUS_SUITE_HPC_IMAGE_STORE"
       printf "SARUS_SUITE_PARALLAX_STORE=%s\n" "$SARUS_SUITE_PARALLAX_STORE"
       command -v sarusctl podman parallax crun
     } >"$output_dir/environment.txt"
@@ -214,6 +218,8 @@ assert_contains "images used the shell Parallax store" \
   "additionalimagestore=$STORE_DIR" "$IMAGES_TRACE" || failures=$((failures + 1))
 
 # Validation of sarusctl using bundle rendered configs
+assert_contains "sarusctl config rendered hpc_image store" \
+  "hpc_image_store = \"$HPC_STORE_DIR\"" "$CONFIG_FILE" || failures=$((failures + 1))
 assert_contains "sarusctl config rendered parallax_imagestore" \
   "parallax_imagestore = \"$STORE_DIR\"" "$CONFIG_FILE" || failures=$((failures + 1))
 assert_contains "sarusctl config rendered bundled Podman" \

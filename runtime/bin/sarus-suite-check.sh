@@ -166,6 +166,7 @@ main() {
   check_cmd_path netavark
   check_cmd_path aardvark-dns
   check_cmd_path catatonit
+  check_cmd_path skopeo
   if [ -x "${SARUS_SUITE_BIN}/rootlessport" ]; then
     log "command rootlessport: ${SARUS_SUITE_BIN}/rootlessport"
   else

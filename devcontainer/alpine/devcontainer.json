@@ -4,8 +4,8 @@
     "dockerfile": "Dockerfile",
     "context": "..",
     "args": {
-      "GO_VERSION": "1.25.0",
-      "RUST_VERSION": "1.87.0"
+      "GO_VERSION": "1.27.0",
+      "RUST_VERSION": "1.99.0"
     }
   },
   "remoteEnv": {

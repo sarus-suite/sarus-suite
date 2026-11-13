@@ -55,6 +55,7 @@ install_bin "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/aardvark-dns" aardvark
 install_bin_if_present "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/rootlessport" rootlessport
 install_bin "${PODMAN_STATIC_PREFIX}/usr/local/lib/podman/catatonit" catatonit
 install_bin "${PARALLAX_BIN}" parallax
+install_bin "${PARALLAX_MOUNT_PROGRAM_SCRIPT}" parallax-mount-program
 install_bin "${SARUSCTL_BIN}" sarusctl
 install_bin "${SKOPEO_BIN}" skopeo
 install_multiple_skybox
@@ -74,7 +75,6 @@ install -Dm0755 "${PERFEXT_MKHOMEDIR_BIN}" "${RUNTIME_HOOK_BIN_DIR}/mkhomedir"
 install -Dm0755 "${PERFEXT_SETHOMEVAR_BIN}" "${RUNTIME_HOOK_BIN_DIR}/sethomevar"
 install -Dm0755 "${PERFEXT_PMIX_HOOK_BIN}" "${RUNTIME_HOOK_BIN_DIR}/pmix_hook"
 install -Dm0755 "${PERFEXT_SQUASHFS_MOUNTS_BIN}" "${RUNTIME_HOOK_BIN_DIR}/squashfs_mounts"
-install_bin "${ROOT_DIR}/runtime/support/parallax-mount-program.sh" parallax-mount-program
 install_bin "${ROOT_DIR}/runtime/bin/sarus-suite-check.sh" sarus-suite-check
 install_bin "${MKSQUASHFS_BIN}" mksquashfs
 install_bin "${RSYNC_BIN}" rsync

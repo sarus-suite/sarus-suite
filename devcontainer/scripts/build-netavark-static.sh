@@ -15,10 +15,14 @@ build_require_cmd git
 build_require_cmd cargo
 build_checkout_tag "${NETAVARK_REPO}" "${NETAVARK_VERSION}" "${SRC_DIR}" "${NETAVARK_SHA}"
 
+[ -n "${NETAVARK_BUILD_RUST_VERSION}" ] && update_rust_default_version "${NETAVARK_BUILD_RUST_VERSION}"
+
 cd "${SRC_DIR}"
 [ -n "${RUST_MUSL_TARGET}" ] || build_die "unsupported TARGET_ARCH for netavark: ${TARGET_ARCH}"
 export RUSTFLAGS="${NETAVARK_RUSTFLAGS:--C target-feature=+crt-static -C link-arg=-s}"
 CARGO_BUILD_TARGET="${RUST_MUSL_TARGET}" cargo build --locked --release
+
+[ -n "${NETAVARK_BUILD_RUST_VERSION}" ] && restore_previous_rust_default_version
 
 mkdir -p "$(dirname "${OUTPUT}")"
 cp "target/${RUST_MUSL_TARGET}/release/netavark" "${OUTPUT}"

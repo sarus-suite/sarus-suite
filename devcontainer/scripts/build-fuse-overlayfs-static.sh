@@ -2,7 +2,7 @@
 set -eu
 
 OUT="${OUT:-dist/fuse-overlayfs-static/fuse-overlayfs}"
-FUSE_OVERLAYFS_VERSION="${FUSE_OVERLAYFS_VERSION:-v1.17}"
+FUSE_OVERLAYFS_VERSION="${FUSE_OVERLAYFS_VERSION:-v1.18}"
 FUSE_OVERLAYFS_REPO="${FUSE_OVERLAYFS_REPO:-https://github.com/containers/fuse-overlayfs.git}"
 KEEP_WORKDIR="${KEEP_WORKDIR:-0}"
 JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}"
